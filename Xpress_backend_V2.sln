@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36109.1 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Xpress_backend_V2", "Xpress_backend_V2\Xpress_backend_V2.csproj", "{5C8D55F5-2414-456B-9B66-D4183ACFABAC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5C8D55F5-2414-456B-9B66-D4183ACFABAC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C8D55F5-2414-456B-9B66-D4183ACFABAC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C8D55F5-2414-456B-9B66-D4183ACFABAC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C8D55F5-2414-456B-9B66-D4183ACFABAC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1001E44E-27C3-4283-B1CE-E49960ED9348}
+	EndGlobalSection
+EndGlobal
