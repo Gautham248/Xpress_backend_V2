@@ -113,18 +113,25 @@ namespace Xpress_backend_V2.Repository
             return await query.ToListAsync();
         }
 
-        //public async Task<IEnumerable<TravelRequest>> GetAllTravelRequestsAsync()
-        //{
-        //    return await _context.TravelRequests
-        //        .Include(tr => tr.User)
-        //        .Include(tr => tr.IsInternational)
-        //        .Include(tr => tr.IsRoundTrip)
-        //        .Include(tr => tr.Project)
-        //        .Include(tr => tr.TravelMode)
-        //        .Include(tr => tr.CurrentStatus)
-        //        .Include(tr => tr.SelectedTicketOption)
-        //        .ToListAsync();
-        //}
-
+        // Travel Info Join Query
+        public async Task<List<TravelInfoDTO>> GetTravelInfoAsync(string requestId)
+        {
+            var query = from tr in _context.TravelRequests
+                        join mode in _context.TravelModes on tr.TravelModeId equals mode.TravelModeId
+                        where tr.RequestId == requestId
+                        select new TravelInfoDTO
+                        {
+                            RequestId = tr.RequestId,
+                            OutboundDepartureDate = tr.OutboundDepartureDate,
+                            OutboundArrivalDate = tr.OutboundArrivalDate,
+                            ReturnDepartureDate = tr.ReturnDepartureDate,
+                            ReturnArrivalDate = tr.ReturnArrivalDate,
+                            Transportation = mode.TravelModeName,
+                            RequestCreateDate = tr.CreatedAt,
+                            PurposeOfTravel = tr.PurposeOfTravel,
+                            IsAccommodationRequired = tr.IsAccommodationRequired,
+                        };
+            return await query.ToListAsync();
+        }
     }
 }
