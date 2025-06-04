@@ -13,6 +13,15 @@ namespace Xpress_backend_V2.Repository
         {
             _context = context;
         }
+        public async Task<AuditLog> CreateAuditLogAsync(AuditLog auditLog)
+        {
+            auditLog.Timestamp = DateTime.UtcNow;
+            auditLog.Comments ??= string.Empty;
+
+            await _context.AuditLogs.AddAsync(auditLog);
+            await _context.SaveChangesAsync();
+            return auditLog;
+        }
 
         public async Task<IEnumerable<AuditLog>> GetAllAsync()
         {

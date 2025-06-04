@@ -4,6 +4,7 @@ namespace Xpress_backend_V2.Interface
 {
     public interface ITravelRequestServices
     {
+        Task<TravelRequest> CreateTravelRequestAsync(TravelRequest travelRequest);
         Task<IEnumerable<TravelRequest>> GetAllAsync();
         Task<TravelRequest> GetByIdAsync(string requestId);
         Task AddAsync(TravelRequest travelRequest);
