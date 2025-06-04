@@ -55,7 +55,6 @@ namespace Xpress_backend_V2.Data
             modelBuilder.Entity<TicketOption>().HasKey(to => to.OptionId);
             modelBuilder.Entity<User>().HasKey(u => u.UserId);
             modelBuilder.Entity<RMT>().HasKey(r => r.ProjectId);
-            modelBuilder.Entity<RMT>().HasIndex(r => r.ProjectCode).IsUnique();
             modelBuilder.Entity<TravelMode>().HasKey(tm => tm.TravelModeId);
             modelBuilder.Entity<Airline>().HasKey(a => a.AirlineId);
             modelBuilder.Entity<RequestStatus>().HasKey(rs => rs.StatusId);
@@ -65,6 +64,23 @@ namespace Xpress_backend_V2.Data
             modelBuilder.Entity<AadharDoc>().HasKey(ad => ad.AadharId);
             modelBuilder.Entity<PassportDoc>().HasKey(pd => pd.PassportDocId);
             modelBuilder.Entity<VisaDoc>().HasKey(vd => vd.VisaDocId);
+
+            // Configure RMT entity with property constraints
+            modelBuilder.Entity<RMT>(entity =>
+            {
+                entity.Property(r => r.ProjectCode).IsRequired().HasMaxLength(50);
+                entity.HasIndex(r => r.ProjectCode).IsUnique();
+                entity.Property(r => r.ProjectName).IsRequired().HasMaxLength(255);
+                entity.Property(r => r.DuId).IsRequired();
+                entity.Property(r => r.ProjectStartDate).IsRequired();
+                entity.Property(r => r.ProjectEndDate).IsRequired();
+                entity.Property(r => r.ProjectManager).HasMaxLength(100);
+                entity.Property(r => r.ProjectManagerEmail).HasMaxLength(100);
+                entity.Property(r => r.ProjectStatus).IsRequired().HasMaxLength(50);
+                entity.Property(r => r.DuHeadName).HasMaxLength(100);
+                entity.Property(r => r.DuHeadEmail).HasMaxLength(100);
+                entity.Property(r => r.IsActive).HasDefaultValue(true);
+            });
 
             // Configure relationships
             modelBuilder.Entity<TravelRequest>()
@@ -87,7 +103,7 @@ namespace Xpress_backend_V2.Data
                 .WithMany(u => u.CreatedTicketOptions)
                 .HasForeignKey(to => to.CreatedByUserId);
 
-            // Fixed relationship: TravelRequest.ProjectCode references RMT.ProjectCode (not ProjectId)
+            // TravelRequest.ProjectCode references RMT.ProjectCode
             modelBuilder.Entity<TravelRequest>()
                 .HasOne(tr => tr.Project)
                 .WithMany(r => r.TravelRequests)

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Xpress_backend_V2.Data;
@@ -11,9 +12,11 @@ using Xpress_backend_V2.Data;
 namespace Xpress_backend_V2.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    partial class ApiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250604044253_AddPhoneNumberToUserTable")]
+    partial class AddPhoneNumberToUserTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -221,52 +224,43 @@ namespace Xpress_backend_V2.Migrations
 
                     b.Property<string>("DuHeadEmail")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<string>("DuHeadName")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<int>("DuId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
+                        .HasColumnType("boolean");
 
                     b.Property<string>("ProjectCode")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("ProjectEndDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ProjectManager")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ProjectManagerEmail")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ProjectName")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("ProjectStartDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ProjectStatus")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text");
 
                     b.HasKey("ProjectId");
 
@@ -286,13 +280,6 @@ namespace Xpress_backend_V2.Migrations
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
-
-                    b.Property<int>("SequenceOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("StatusDescription")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("StatusName")
                         .IsRequired()
@@ -417,7 +404,7 @@ namespace Xpress_backend_V2.Migrations
 
                     b.Property<string>("ProjectCode")
                         .IsRequired()
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text");
 
                     b.Property<string>("PurposeOfTravel")
                         .IsRequired()
