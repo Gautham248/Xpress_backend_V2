@@ -1,16 +1,44 @@
 using Microsoft.EntityFrameworkCore;
 using Xpress_backend_V2.Data;
+using Xpress_backend_V2.Interface;
+using Xpress_backend_V2.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 
+// Register DbContext
 builder.Services.AddDbContext<ApiDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Register services
+builder.Services.AddScoped<ITravelRequestServices, TravelRequestRepository>();
+builder.Services.AddScoped<ITicketOptionServices, TicketOptionRepository>();
+builder.Services.AddScoped<IUserServices, UserRepository>();
+builder.Services.AddScoped<IRMTServices, RMTRepository>();
+builder.Services.AddScoped<ITravelModeServices, TravelModeRepository>();
+builder.Services.AddScoped<IAirlineServices, AirlineRepository>();
+builder.Services.AddScoped<IRequestStatusServices, RequestStatusRepository>();
+builder.Services.AddScoped<INotificationServices, NotificationRepository>();
+builder.Services.AddScoped<IUserNotificationServices, UserNotificationRepository>();
+builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
+builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
+builder.Services.AddScoped<IPassportDocServices, PassportDocRepository>();
+builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
+
+// Add CORS policy to allow all frontends
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyHeader()
+               .AllowAnyMethod();
+    });
+});
+
+// Configure Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -24,6 +52,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Apply CORS policy
+app.UseCors("AllowAll");
 
 app.UseAuthorization();
 
