@@ -102,6 +102,7 @@ namespace Xpress_backend_V2.Repository
                             EmployeeName = user.EmployeeName,
                             DepartmentName = user.Department,
                             ProjectCode = rmt.ProjectCode,
+                            ProjectManager = rmt.ProjectManager,
                             TravelModeName = mode.TravelModeName,
                             SourcePlace = tr.SourcePlace,
                             SourceCountry = tr.SourceCountry,
