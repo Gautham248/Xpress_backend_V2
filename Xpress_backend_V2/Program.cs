@@ -30,15 +30,15 @@ builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
 builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
 
 // Configure HttpClient for RmtDataSyncService
-builder.Services.AddHttpClient<RmtDataSyncService>(client =>
-{
-    client.BaseAddress = new Uri("https://api-rmtool.experionglobal.dev/");
-    // Add headers or authentication if needed
-    // client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "your-token");
-});
+//builder.Services.AddHttpClient<RmtDataSyncService>(client =>
+//{
+//    client.BaseAddress = new Uri("https://api-rmtool.experionglobal.dev/");
+//    // Add headers or authentication if needed
+//    // client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "your-token");
+//});
 
-// Register the RmtDataSyncService as a hosted service
-builder.Services.AddHostedService<RmtDataSyncService>();
+//// Register the RmtDataSyncService as a hosted service
+//builder.Services.AddHostedService<RmtDataSyncService>();
 
 // Add CORS policy to allow all frontends
 builder.Services.AddCors(options =>
