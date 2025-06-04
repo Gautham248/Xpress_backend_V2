@@ -27,6 +27,7 @@ builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
 builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
 builder.Services.AddScoped<IPassportDocServices, PassportDocRepository>();
 builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
+builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
 
 // Configure HttpClient for RmtDataSyncService
 builder.Services.AddHttpClient<RmtDataSyncService>(client =>
