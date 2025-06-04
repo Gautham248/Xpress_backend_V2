@@ -127,15 +127,15 @@ namespace Xpress_backend_V2.Controllers
                 response.StatusCode = HttpStatusCode.OK;
                 response.Result = details;
 
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                response.IsSuccess = false;
-                response.StatusCode = HttpStatusCode.InternalServerError;
-                response.ErrorMessages.Add("An error occurred while retrieving travel information");
-                response.ErrorMessages.Add(ex.Message);
-                response.Result = null;
+                    return Ok(response);
+                }
+                catch (Exception ex)
+                {
+                    response.IsSuccess = false;
+                    response.StatusCode = HttpStatusCode.InternalServerError;
+                    response.ErrorMessages.Add("An error occurred while retrieving travel information");
+                    response.ErrorMessages.Add(ex.Message);
+                    response.Result = null;
 
                 return StatusCode(500, response);
             }
