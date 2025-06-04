@@ -17,12 +17,14 @@ namespace Xpress_backend_V2.Controllers
         private readonly ITravelRequestServices _travelRequestService;
         private readonly IAuditLogServices _auditLogService;
         private readonly IMapper _mapper;
+        private readonly ApiDbContext _context;
         private readonly ILogger<TravelRequestsController> _logger;
 
         private const int DefaultInitialStatusId = 1;
 
         public TravelRequestsController(
             ITravelRequestServices travelRequestService,
+            ApiDbContext context,
             IAuditLogServices auditLogService,
             IMapper mapper,
             ILogger<TravelRequestsController> logger)
@@ -30,6 +32,7 @@ namespace Xpress_backend_V2.Controllers
             _travelRequestService = travelRequestService;
             _auditLogService = auditLogService;
             _mapper = mapper;
+            _context = context;
             _logger = logger;
         }
 
@@ -138,6 +141,36 @@ namespace Xpress_backend_V2.Controllers
 
         // GetTravelRequestById method is NOT included here as per your request
         // to only have the POST method.
+
+        // Travel Request APIs
+        [HttpGet("travelrequests")]
+        public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetTravelRequests()
+        {
+            var travelRequests = await _context.TravelRequests
+                .Include(t => t.User)
+                .Include(t => t.Project)
+                .Include(t => t.TravelMode)
+                .Include(t => t.CurrentStatus)
+                .Include(t => t.SelectedTicketOption)
+                .ToListAsync();
+
+            var travelRequestDtos = _mapper.Map<List<TravelRequestDTO>>(travelRequests);
+            return Ok(travelRequestDtos);
+        }
+
+        // Travel Request Details APIs
+
+        // Travel InfoBanner APIs
+        [HttpGet("infobanner/{requestId}")]
+        public async Task<IActionResult> GetTravelInfoBannerDetails(string requestId)
+        {
+            var details = await _travelRequestService.GetTravelInfoBannerDetailsAsync(requestId);
+            if (details == null || !details.Any())
+            {
+                return NotFound($"No travel request found with RequestId = {requestId}");
+            }
+            return Ok(details);
+        }
     }
 }
 

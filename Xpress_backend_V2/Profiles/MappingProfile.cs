@@ -7,6 +7,8 @@ namespace Xpress_backend_V2.Profiles
     public class MappingProfile : Profile
     {
         public MappingProfile() {
+            CreateMap<TravelRequestDTO, TravelRequest>();
+            CreateMap<TravelRequest, TravelRequestDTO>();
 
      CreateMap<TravelRequestCreateDTO, TravelRequest>()
     .ForMember(dest => dest.RequestId, opt => opt.Ignore())
