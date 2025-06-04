@@ -10,5 +10,7 @@ namespace Xpress_backend_V2.Interface
         Task UpdateAsync(AuditLog auditLog);
         Task DeleteAsync(int logId);
         Task<IEnumerable<AuditLog>> GetByTravelRequestAsync(string requestId);
+
+        Task<AuditLog> CreateAuditLogAsync(AuditLog auditLog);
     }
 }

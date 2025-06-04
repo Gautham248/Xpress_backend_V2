@@ -125,6 +125,14 @@ namespace Xpress_backend_V2.Repository
         //        .Include(tr => tr.SelectedTicketOption)
         //        .ToListAsync();
         //}
-
+        public async Task<TravelRequest> CreateTravelRequestAsync(TravelRequest travelRequest)
+        {
+            travelRequest.RequestId = Guid.NewGuid().ToString("N");
+            travelRequest.CreatedAt = DateTime.UtcNow;
+            travelRequest.UpdatedAt = DateTime.UtcNow;
+            await _context.TravelRequests.AddAsync(travelRequest);
+            await _context.SaveChangesAsync();
+            return travelRequest;
+        }
     }
 }
