@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+    using Microsoft.EntityFrameworkCore;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Repository;
@@ -26,6 +26,8 @@ builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
 builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
 builder.Services.AddScoped<IPassportDocServices, PassportDocRepository>();
 builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
+
+builder.Services.AddAutoMapper(typeof(Program));
 
 // Add CORS policy to allow all frontends
 builder.Services.AddCors(options =>
