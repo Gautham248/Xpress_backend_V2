@@ -24,21 +24,21 @@ namespace Xpress_backend_V2.Controllers
             _context = context;
         }
 
-            // Travel Request APIs
-            [HttpGet("travelrequests")]
-            public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetTravelRequests()
-            {
-                var travelRequests = await _context.TravelRequests
-                    .Include(t => t.User)
-                    .Include(t => t.Project)
-                    .Include(t => t.TravelMode)
-                    .Include(t => t.CurrentStatus)
-                    .Include(t => t.SelectedTicketOption)
-                    .ToListAsync();
+        // Travel Request APIs
+        [HttpGet("travelrequests")]
+        public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetTravelRequests()
+        {
+            var travelRequests = await _context.TravelRequests
+                .Include(t => t.User)
+                .Include(t => t.Project)
+                .Include(t => t.TravelMode)
+                .Include(t => t.CurrentStatus)
+                .Include(t => t.SelectedTicketOption)
+                .ToListAsync();
 
-                var travelRequestDtos = _mapper.Map<List<TravelRequestDTO>>(travelRequests);
-                return Ok(travelRequestDtos);
-            }
+            var travelRequestDtos = _mapper.Map<List<TravelRequestDTO>>(travelRequests);
+            return Ok(travelRequestDtos);
+        }
 
 
         // GET: api/TravelRequest/ByProjectManager/{email}
@@ -105,41 +105,41 @@ namespace Xpress_backend_V2.Controllers
 
         // Travel InfoBanner API
         [HttpGet("infobanner/{requestId}")]
-            public async Task<ActionResult<APIResponse>> GetTravelInfoBannerDetails(string requestId)
+        public async Task<ActionResult<APIResponse>> GetTravelInfoBannerDetails(string requestId)
+        {
+            var response = new APIResponse();
+
+            try
             {
-                var response = new APIResponse();
+                var details = await _travelRequestService.GetTravelInfoBannerDetailsAsync(requestId);
 
-                try
-                {
-                    var details = await _travelRequestService.GetTravelInfoBannerDetailsAsync(requestId);
-
-                    if (details == null || !details.Any())
-                    {
-                        response.IsSuccess = false;
-                        response.StatusCode = HttpStatusCode.NotFound;
-                        response.ErrorMessages.Add($"No travel request found with RequestId = {requestId}");
-                        response.Result = null;
-
-                        return NotFound(response);
-                    }
-
-                    response.IsSuccess = true;
-                    response.StatusCode = HttpStatusCode.OK;
-                    response.Result = details;
-
-                    return Ok(response);
-                }
-                catch (Exception ex)
+                if (details == null || !details.Any())
                 {
                     response.IsSuccess = false;
-                    response.StatusCode = HttpStatusCode.InternalServerError;
-                    response.ErrorMessages.Add("An error occurred while retrieving travel information");
-                    response.ErrorMessages.Add(ex.Message); // Optional: Include actual error message for debugging
+                    response.StatusCode = HttpStatusCode.NotFound;
+                    response.ErrorMessages.Add($"No travel request found with RequestId = {requestId}");
                     response.Result = null;
 
-                    return StatusCode(500, response);
+                    return NotFound(response);
                 }
+
+                response.IsSuccess = true;
+                response.StatusCode = HttpStatusCode.OK;
+                response.Result = details;
+
+                return Ok(response);
             }
+            catch (Exception ex)
+            {
+                response.IsSuccess = false;
+                response.StatusCode = HttpStatusCode.InternalServerError;
+                response.ErrorMessages.Add("An error occurred while retrieving travel information");
+                response.ErrorMessages.Add(ex.Message); // Optional: Include actual error message for debugging
+                response.Result = null;
+
+                return StatusCode(500, response);
+            }
+        }
 
         // Travel Info API
         [HttpGet("travelinfo/{requestId}")]
