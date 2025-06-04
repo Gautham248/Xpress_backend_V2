@@ -40,7 +40,7 @@ namespace Xpress_backend_V2.Controllers
 
         // Travel Request Details APIs
 
-        // Travel InfoBanner APIs
+        // Travel InfoBanner API
         [HttpGet("infobanner/{requestId}")]
         public async Task<IActionResult> GetTravelInfoBannerDetails(string requestId)
         {
@@ -50,6 +50,18 @@ namespace Xpress_backend_V2.Controllers
                 return NotFound($"No travel request found with RequestId = {requestId}");
             }
             return Ok(details);
+        }
+
+        // Travel Info API
+        [HttpGet("travelinfo/{requestId}")]
+        public async Task<IActionResult> GetTravelInfoDetails(string requestId)
+        {
+            var travelInfo = await _travelRequestService.GetTravelInfoAsync(requestId);
+            if (travelInfo == null || !travelInfo.Any())
+            {
+                return NotFound($"No travel request found with RequestId = {requestId}");
+            }
+            return Ok(travelInfo);
         }
     }
 }
