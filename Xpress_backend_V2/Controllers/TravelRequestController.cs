@@ -40,10 +40,71 @@ namespace Xpress_backend_V2.Controllers
                 return Ok(travelRequestDtos);
             }
 
-            // Travel Request Details APIs
 
-            // Travel InfoBanner APIs
-            [HttpGet("infobanner/{requestId}")]
+        // GET: api/TravelRequest/ByProjectManager/{email}
+        [HttpGet("ByProjectManager/{email}")]
+        public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetActiveTravelRequestsByProjectManager(string email)
+        {
+            // Validate email
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest("Project manager email is required.");
+            }
+
+            // Query to get active travel requests for the project manager's project
+            var travelRequests = await _context.TravelRequests
+                .Where(tr => tr.Project.ProjectManagerEmail == email && tr.IsActive)
+                .Include(tr => tr.Project)
+                .Include(tr => tr.TravelMode)
+                .Include(tr => tr.CurrentStatus)
+                .Include(tr => tr.User)
+                .Select(tr => new TravelRequestDTO
+                {
+                    RequestId = tr.RequestId,
+                    SourcePlace = tr.SourcePlace,
+                    SourceCountry = tr.SourceCountry,
+                    DestinationPlace = tr.DestinationPlace,
+                    DestinationCountry = tr.DestinationCountry,
+                    OutboundDepartureDate = tr.OutboundDepartureDate,
+                    OutboundArrivalDate = tr.OutboundArrivalDate,
+                    ReturnDepartureDate = tr.ReturnDepartureDate,
+                    ReturnArrivalDate = tr.ReturnArrivalDate,
+                    IsAccommodationRequired = tr.IsAccommodationRequired,
+                    IsPickupRequired = tr.IsPickUpRequired,
+                    IsDropoffRequired = tr.IsDropOffRequired,
+                    PickupLocation = tr.IsPickUpRequired ? tr.SourcePlace : null, // Assuming pickup location is same as SourcePlace
+                    DropoffLocation = tr.IsDropOffRequired ? tr.DestinationPlace : null, // Assuming dropoff location is same as DestinationPlace
+                    Comments = tr.Comments,
+                    PurposeOfTravel = tr.PurposeOfTravel,
+                    IsVegetarian = tr.IsVegetarian,
+                    AttendedCct = tr.AttendedCCT,
+                    TravelAgencyName = tr.TravelAgencyName,
+                    TotalExpense = tr.TotalExpense,
+                    UploadedTicketPdfPath = tr.TicketDocumentPath,
+                    CreatedAt = tr.CreatedAt,
+                    UpdatedAt = tr.UpdatedAt,
+                    EmployeeName = tr.User.EmployeeName, // Assuming User has a Name property
+                    IsInternational = tr.IsInternational,
+                    IsRoundTrip = tr.IsRoundTrip,
+                    ProjectName = tr.Project.ProjectName,
+                    TravelModeName = tr.TravelMode.TravelModeName, // Assuming TravelMode has a Name property
+                    CurrentStatusName = tr.CurrentStatus.StatusName, // Assuming RequestStatus has a Name property
+                    SelectedTicketOptionId = tr.SelectedTicketOptionId
+                })
+                .ToListAsync();
+
+            if (!travelRequests.Any())
+            {
+                return NotFound("No active travel requests found for the specified project manager.");
+            }
+
+            return Ok(travelRequests);
+        }
+
+        // Travel Request Details APIs
+
+        // Travel InfoBanner APIs
+        [HttpGet("infobanner/{requestId}")]
             public async Task<ActionResult<APIResponse>> GetTravelInfoBannerDetails(string requestId)
             {
                 var response = new APIResponse();
