@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Repository;
+using Xpress_backend_V2.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +27,17 @@ builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
 builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
 builder.Services.AddScoped<IPassportDocServices, PassportDocRepository>();
 builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
+
+// Configure HttpClient for RmtDataSyncService
+builder.Services.AddHttpClient<RmtDataSyncService>(client =>
+{
+    client.BaseAddress = new Uri("https://api-rmtool.experionglobal.dev/");
+    // Add headers or authentication if needed
+    // client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "your-token");
+});
+
+// Register the RmtDataSyncService as a hosted service
+builder.Services.AddHostedService<RmtDataSyncService>();
 
 // Add CORS policy to allow all frontends
 builder.Services.AddCors(options =>
