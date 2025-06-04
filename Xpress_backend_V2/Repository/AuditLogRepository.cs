@@ -68,5 +68,14 @@ namespace Xpress_backend_V2.Repository
                 .Where(al => al.RequestId == requestId)
                 .ToListAsync();
         }
+        public async Task<AuditLog> CreateAuditLogAsync(AuditLog auditLog)
+        {
+            auditLog.Timestamp = DateTime.UtcNow;
+            auditLog.Comments ??= string.Empty;
+
+            await _context.AuditLogs.AddAsync(auditLog);
+            await _context.SaveChangesAsync();
+            return auditLog;
+        }
     }
 }
