@@ -42,6 +42,18 @@ builder.Services.AddHostedService<RmtDataSyncService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 
+// For CORS error resolve
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5030", "http://localhost:5173") // Add React app ports
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
+
 // Add CORS policy to allow all frontends
 builder.Services.AddCors(options =>
 {
