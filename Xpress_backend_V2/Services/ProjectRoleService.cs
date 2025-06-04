@@ -22,7 +22,7 @@ namespace Xpress_backend_V2.Services
             }
 
             // Define "active" statuses (adjust these based on your RequestStatus table)
-            var activeStatuses = new List<string> { "Pending", "Approved", "InProgress" }; // Example statuses
+            var activeStatuses = new List<string> { "PendingReview", "Approved", "InProgress" }; // Example statuses
 
             var projects = await _dbContext.RMTs
                 .Where(rmt =>
