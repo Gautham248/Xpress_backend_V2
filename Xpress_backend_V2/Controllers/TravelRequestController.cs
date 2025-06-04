@@ -42,7 +42,7 @@ namespace Xpress_backend_V2.Controllers
 
             // Travel Request Details APIs
 
-            // Travel InfoBanner APIs
+            // Travel InfoBanner API
             [HttpGet("infobanner/{requestId}")]
             public async Task<ActionResult<APIResponse>> GetTravelInfoBannerDetails(string requestId)
             {
@@ -73,7 +73,7 @@ namespace Xpress_backend_V2.Controllers
                     response.IsSuccess = false;
                     response.StatusCode = HttpStatusCode.InternalServerError;
                     response.ErrorMessages.Add("An error occurred while retrieving travel information");
-                    response.ErrorMessages.Add(ex.Message); // Optional: Include actual error message for debugging
+                    response.ErrorMessages.Add(ex.Message);
                     response.Result = null;
 
                     return StatusCode(500, response);
