@@ -29,18 +29,21 @@ builder.Services.AddScoped<IPassportDocServices, PassportDocRepository>();
 builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
 builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
 
-// Configure HttpClient for RmtDataSyncService
-//builder.Services.AddHttpClient<RmtDataSyncService>(client =>
-//{
-//    client.BaseAddress = new Uri("https://api-rmtool.experionglobal.dev/");
-//    // Add headers or authentication if needed
-//    // client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "your-token");
-//});
 
-//// Register the RmtDataSyncService as a hosted service
-//builder.Services.AddHostedService<RmtDataSyncService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
+
+// For CORS error resolve
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5030", "http://localhost:5173") // Add React app ports
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
 
 // Add CORS policy to allow all frontends
 builder.Services.AddCors(options =>
