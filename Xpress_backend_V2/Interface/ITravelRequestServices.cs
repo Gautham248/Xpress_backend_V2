@@ -1,4 +1,5 @@
 ﻿using Xpress_backend_V2.Models;
+using Xpress_backend_V2.Models.DTO;
 
 namespace Xpress_backend_V2.Interface
 {
@@ -11,5 +12,11 @@ namespace Xpress_backend_V2.Interface
         Task DeleteAsync(string requestId);
         Task<IEnumerable<TravelRequest>> GetByStatusAsync(int statusId);
         Task<IEnumerable<TravelRequest>> GetByUserAsync(int userId);
+
+        // Travel Request
+        //Task<TravelRequest> GetAllTravelRequestsAsync();
+
+        // Travel Info Banner
+        Task<List<TravelInfoBannerDTO>> GetTravelInfoBannerDetailsAsync(string requestId);
     }
 }

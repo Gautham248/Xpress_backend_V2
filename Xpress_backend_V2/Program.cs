@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+    using Microsoft.EntityFrameworkCore;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Repository;
@@ -39,6 +39,8 @@ builder.Services.AddHttpClient<RmtDataSyncService>(client =>
 
 // Register the RmtDataSyncService as a hosted service
 builder.Services.AddHostedService<RmtDataSyncService>();
+
+builder.Services.AddAutoMapper(typeof(Program));
 
 // Add CORS policy to allow all frontends
 builder.Services.AddCors(options =>
