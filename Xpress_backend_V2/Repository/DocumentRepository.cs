@@ -6,7 +6,7 @@ using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
 using Xpress_backend_V2.Models.DTO;
 
-namespace XPRESS_V1_Backend.Repositories
+namespace Xpress_backend_V2.Repository
 {
     public class DocumentRepository : IDocumentService
     {

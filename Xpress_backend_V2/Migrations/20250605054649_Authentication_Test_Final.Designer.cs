@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Xpress_backend_V2.Data;
@@ -11,9 +12,11 @@ using Xpress_backend_V2.Data;
 namespace Xpress_backend_V2.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    partial class ApiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250605054649_Authentication_Test_Final")]
+    partial class Authentication_Test_Final
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -34,11 +37,11 @@ namespace Xpress_backend_V2.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("AadharNumber")
-                        .HasColumnType("text");
-
                     b.Property<int>("CreatedBy")
                         .HasColumnType("integer");
+
+                    b.Property<string>("DocumentNumber")
+                        .HasColumnType("text");
 
                     b.Property<string>("DocumentPath")
                         .IsRequired()
@@ -598,6 +601,10 @@ namespace Xpress_backend_V2.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("VisaNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("VisaType")
                         .IsRequired()
                         .HasColumnType("text");
 

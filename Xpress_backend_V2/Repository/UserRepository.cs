@@ -1,11 +1,15 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System;
+using System.Security.Cryptography;
+using System.Text;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
+using Xpress_backend_V2.Models.DTO;
 
 namespace Xpress_backend_V2.Repository
 {
-    public class UserRepository : IUserServices
+    public class UserRepository : IUserServices , IUserRepository
     {
         private readonly ApiDbContext _context;
 
@@ -64,5 +68,78 @@ namespace Xpress_backend_V2.Repository
                 .Include(u => u.CreatedTicketOptions)
                 .FirstOrDefaultAsync(u => u.EmployeeName == employeeName && u.IsActive);
         }
+
+
+        public async Task<User> LoginUser(string email, string password)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeEmail == email);
+
+            if (user != null)
+            {
+                if (user.Password == HashPassword(password))
+                    return user;
+            }
+
+            return null;
+        }
+
+
+        public async Task<User> RegisterUser(UserRegisterDTO user)
+        {
+            try
+            {
+                Console.WriteLine($"User Email: {user.EmployeeEmail}");
+
+                var userExist = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeEmail == user.EmployeeEmail);
+                if (userExist == null)
+                {
+                    var newUser = new User
+                    {
+                        EmployeeName = user.EmployeeName,
+                        EmployeeEmail = user.EmployeeEmail,
+                        Password = HashPassword(user.Password),
+                        PhoneNumber = user.PhoneNumber ?? "",
+                        UserRole = user.UserRole,
+                        Department = user.Department,
+                        IsActive = true, // Assuming new users are active by default
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    await _context.Users.AddAsync(newUser);
+                    await _context.SaveChangesAsync();
+                    return newUser;
+                }
+                else
+                {
+                    return null; // Email already exists
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error: {e.Message}");
+                return null;
+            }
+        }
+
+
+
+
+        public string HashPassword(string password)
+        {
+            using (SHA512 sha512 = SHA512.Create())
+            {
+                byte[] hashedString = sha512.ComputeHash(Encoding.UTF8.GetBytes(password));
+                return Convert.ToBase64String(hashedString);
+            }
+        }
+
+
+
+
+
+
+
+
     }
 }

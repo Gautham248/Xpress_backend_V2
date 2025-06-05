@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Xpress_backend_V2.Data;
@@ -11,9 +12,11 @@ using Xpress_backend_V2.Data;
 namespace Xpress_backend_V2.Migrations
 {
     [DbContext(typeof(ApiDbContext))]
-    partial class ApiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250605041654_PickupDropoffAddedToTravelRequestTable")]
+    partial class PickupDropoffAddedToTravelRequestTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -34,11 +37,11 @@ namespace Xpress_backend_V2.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("AadharNumber")
-                        .HasColumnType("text");
-
                     b.Property<int>("CreatedBy")
                         .HasColumnType("integer");
+
+                    b.Property<string>("DocumentNumber")
+                        .HasColumnType("text");
 
                     b.Property<string>("DocumentPath")
                         .IsRequired()
@@ -499,20 +502,12 @@ namespace Xpress_backend_V2.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("EmployeeEmail")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("EmployeeName")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("Password")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
@@ -598,6 +593,10 @@ namespace Xpress_backend_V2.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("VisaNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("VisaType")
                         .IsRequired()
                         .HasColumnType("text");
 

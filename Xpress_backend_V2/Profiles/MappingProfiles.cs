@@ -4,9 +4,9 @@ using Xpress_backend_V2.Models.DTO;
 
 namespace Xpress_backend_V2.Profiles
 {
-    public class MappingProfile : Profile
+    public class MappingProfiles : Profile
     {
-        public MappingProfile()
+        public MappingProfiles()
         {
             // --- From DTO to Entity ---
 

@@ -2,6 +2,7 @@
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
+using Xpress_backend_V2.Models.DTO;
 
 namespace Xpress_backend_V2.Repository
 {
@@ -85,6 +86,73 @@ namespace Xpress_backend_V2.Repository
                 .Include(tr => tr.CurrentStatus)
                 .Where(tr => tr.UserId == userId && tr.IsActive)
                 .ToListAsync();
+        }
+
+        // Travel Info Banner
+        public async Task<List<TravelInfoBannerDTO>> GetTravelInfoBannerDetailsAsync(string requestId)
+        {
+            var query = from tr in _context.TravelRequests
+                        join user in _context.Users on tr.UserId equals user.UserId
+                        join rmt in _context.RMTs on tr.ProjectCode equals rmt.ProjectCode
+                        join mode in _context.TravelModes on tr.TravelModeId equals mode.TravelModeId
+                        where tr.RequestId == requestId
+                        select new TravelInfoBannerDTO
+                        {
+                            RequestId = tr.RequestId,
+                            EmployeeName = user.EmployeeName,
+                            DepartmentName = user.Department,
+                            ProjectCode = rmt.ProjectCode,
+                            ProjectManager = rmt.ProjectManager,
+                            TravelModeName = mode.TravelModeName,
+                            SourcePlace = tr.SourcePlace,
+                            SourceCountry = tr.SourceCountry,
+                            DestinationPlace = tr.DestinationPlace,
+                            DestinationCountry = tr.DestinationCountry
+                        };
+
+            return await query.ToListAsync();
+        }
+
+        //public async Task<IEnumerable<TravelRequest>> GetAllTravelRequestsAsync()
+        //{
+        //    return await _context.TravelRequests
+        //        .Include(tr => tr.User)
+        //        .Include(tr => tr.IsInternational)
+        //        .Include(tr => tr.IsRoundTrip)
+        //        .Include(tr => tr.Project)
+        //        .Include(tr => tr.TravelMode)
+        //        .Include(tr => tr.CurrentStatus)
+        //        .Include(tr => tr.SelectedTicketOption)
+        //        .ToListAsync();
+        //}
+        public async Task<TravelRequest> CreateTravelRequestAsync(TravelRequest travelRequest)
+        {
+            travelRequest.RequestId = Guid.NewGuid().ToString("N");
+            travelRequest.CreatedAt = DateTime.UtcNow;
+            travelRequest.UpdatedAt = DateTime.UtcNow;
+            await _context.TravelRequests.AddAsync(travelRequest);
+            await _context.SaveChangesAsync();
+            return travelRequest;
+        }
+        // Travel Info Join Query
+        public async Task<List<TravelInfoDTO>> GetTravelInfoAsync(string requestId)
+        {
+            var query = from tr in _context.TravelRequests
+                        join mode in _context.TravelModes on tr.TravelModeId equals mode.TravelModeId
+                        where tr.RequestId == requestId
+                        select new TravelInfoDTO
+                        {
+                            RequestId = tr.RequestId,
+                            OutboundDepartureDate = tr.OutboundDepartureDate,
+                            OutboundArrivalDate = tr.OutboundArrivalDate,
+                            ReturnDepartureDate = tr.ReturnDepartureDate,
+                            ReturnArrivalDate = tr.ReturnArrivalDate,
+                            Transportation = mode.TravelModeName,
+                            RequestCreateDate = tr.CreatedAt,
+                            PurposeOfTravel = tr.PurposeOfTravel,
+                            IsAccommodationRequired = tr.IsAccommodationRequired,
+                        };
+            return await query.ToListAsync();
         }
     }
 }
