@@ -225,15 +225,21 @@ namespace Xpress_backend_V2.Controllers
 
         // GET: api/TravelRequest/ByProjectManager/{email}
         [HttpGet("ByProjectManager/{email}")]
-        public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetActiveTravelRequestsByProjectManager(string email)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> GetActiveTravelRequestsByProjectManager(string email)
         {
-            // Validate email
+            var apiResponse = new APIResponse();
+
             if (string.IsNullOrWhiteSpace(email))
             {
-                return BadRequest("Project manager email is required.");
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                apiResponse.ErrorMessages.Add("Project manager email is required.");
+                return BadRequest(apiResponse);
             }
 
-            // Query to get active travel requests for the project manager's project
             var travelRequests = await _context.TravelRequests
                 .Where(tr => tr.Project.ProjectManagerEmail == email && tr.IsActive)
                 .Include(tr => tr.Project)
@@ -254,8 +260,8 @@ namespace Xpress_backend_V2.Controllers
                     IsAccommodationRequired = tr.IsAccommodationRequired,
                     IsPickupRequired = tr.IsPickUpRequired,
                     IsDropoffRequired = tr.IsDropOffRequired,
-                    PickupPlace = tr.IsPickUpRequired ? tr.PickUpPlace : null, // Assuming pickup location is same as SourcePlace
-                    DropoffPlace = tr.IsDropOffRequired ? tr.DropOffPlace : null, // Assuming dropoff location is same as DestinationPlace
+                    PickupPlace = tr.IsPickUpRequired ? tr.PickUpPlace : null,
+                    DropoffPlace = tr.IsDropOffRequired ? tr.DropOffPlace : null,
                     Comments = tr.Comments,
                     PurposeOfTravel = tr.PurposeOfTravel,
                     IsVegetarian = tr.IsVegetarian,
@@ -265,23 +271,102 @@ namespace Xpress_backend_V2.Controllers
                     UploadedTicketPdfPath = tr.TicketDocumentPath,
                     CreatedAt = tr.CreatedAt,
                     UpdatedAt = tr.UpdatedAt,
-                    EmployeeName = tr.User.EmployeeName, // Assuming User has a Name property
+                    EmployeeName = tr.User.EmployeeName,
                     IsInternational = tr.IsInternational,
                     IsRoundTrip = tr.IsRoundTrip,
                     ProjectName = tr.Project.ProjectName,
-                    TravelModeName = tr.TravelMode.TravelModeName, // Assuming TravelMode has a Name property
-                    CurrentStatusName = tr.CurrentStatus.StatusName, // Assuming RequestStatus has a Name property
+                    TravelModeName = tr.TravelMode.TravelModeName,
+                    CurrentStatusName = tr.CurrentStatus.StatusName,
                     SelectedTicketOptionId = tr.SelectedTicketOptionId
                 })
                 .ToListAsync();
 
             if (!travelRequests.Any())
             {
-                return NotFound("No active travel requests found for the specified project manager.");
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.NotFound;
+                apiResponse.ErrorMessages.Add("No active travel requests found for the specified project manager.");
+                return NotFound(apiResponse);
             }
 
-            return Ok(travelRequests);
+            apiResponse.IsSuccess = true;
+            apiResponse.StatusCode = HttpStatusCode.OK;
+            apiResponse.Result = travelRequests;
+            return Ok(apiResponse);
         }
+
+        //Travel Request By DU Head
+        [HttpGet("ByProjectManager/{email}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> GetActiveTravelRequestsByDUHead(string email)
+        {
+            var apiResponse = new APIResponse();
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                apiResponse.ErrorMessages.Add("DU Head email is required.");
+                return BadRequest(apiResponse);
+            }
+
+            var travelRequests = await _context.TravelRequests
+                .Where(tr => tr.Project.DuHeadEmail == email && tr.IsActive)
+                .Include(tr => tr.Project)
+                .Include(tr => tr.TravelMode)
+                .Include(tr => tr.CurrentStatus)
+                .Include(tr => tr.User)
+                .Select(tr => new TravelRequestDTO
+                {
+                    RequestId = tr.RequestId,
+                    SourcePlace = tr.SourcePlace,
+                    SourceCountry = tr.SourceCountry,
+                    DestinationPlace = tr.DestinationPlace,
+                    DestinationCountry = tr.DestinationCountry,
+                    OutboundDepartureDate = tr.OutboundDepartureDate,
+                    OutboundArrivalDate = tr.OutboundArrivalDate,
+                    ReturnDepartureDate = tr.ReturnDepartureDate,
+                    ReturnArrivalDate = tr.ReturnArrivalDate,
+                    IsAccommodationRequired = tr.IsAccommodationRequired,
+                    IsPickupRequired = tr.IsPickUpRequired,
+                    IsDropoffRequired = tr.IsDropOffRequired,
+                    PickupPlace = tr.IsPickUpRequired ? tr.PickUpPlace : null,
+                    DropoffPlace = tr.IsDropOffRequired ? tr.DropOffPlace : null,
+                    Comments = tr.Comments,
+                    PurposeOfTravel = tr.PurposeOfTravel,
+                    IsVegetarian = tr.IsVegetarian,
+                    AttendedCct = tr.AttendedCCT,
+                    TravelAgencyName = tr.TravelAgencyName,
+                    TotalExpense = tr.TotalExpense,
+                    UploadedTicketPdfPath = tr.TicketDocumentPath,
+                    CreatedAt = tr.CreatedAt,
+                    UpdatedAt = tr.UpdatedAt,
+                    EmployeeName = tr.User.EmployeeName,
+                    IsInternational = tr.IsInternational,
+                    IsRoundTrip = tr.IsRoundTrip,
+                    ProjectName = tr.Project.ProjectName,
+                    TravelModeName = tr.TravelMode.TravelModeName,
+                    CurrentStatusName = tr.CurrentStatus.StatusName,
+                    SelectedTicketOptionId = tr.SelectedTicketOptionId
+                })
+                .ToListAsync();
+
+            if (!travelRequests.Any())
+            {
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.NotFound;
+                apiResponse.ErrorMessages.Add("No active travel requests found for the specified project manager.");
+                return NotFound(apiResponse);
+            }
+
+            apiResponse.IsSuccess = true;
+            apiResponse.StatusCode = HttpStatusCode.OK;
+            apiResponse.Result = travelRequests;
+            return Ok(apiResponse);
+        }
+
 
         // Travel Request Details APIs
 
