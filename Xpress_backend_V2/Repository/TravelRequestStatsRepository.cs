@@ -28,7 +28,6 @@ namespace Xpress_backend_V2.Repository
             {
                 return 0;
             }
-
             return await _context.TravelRequests
                 .Include(tr => tr.CurrentStatus)
                 .CountAsync(tr => tr.IsActive &&
@@ -43,7 +42,6 @@ namespace Xpress_backend_V2.Repository
             {
                 return 0;
             }
-
             return await _context.TravelRequests
                 .Include(tr => tr.CurrentStatus)
                 .CountAsync(tr => tr.IsActive &&
@@ -54,15 +52,12 @@ namespace Xpress_backend_V2.Repository
         public async Task<TravelLegCountsDto> GetTodaysTravelLegCountsAsync()
         {
             var today = DateTime.UtcNow.Date;
-
             var outboundDepartures = await _context.TravelRequests
                 .CountAsync(tr => tr.IsActive && tr.OutboundDepartureDate.Date == today);
-
             var returnArrivals = await _context.TravelRequests
                 .CountAsync(tr => tr.IsActive &&
                                    tr.ReturnArrivalDate.HasValue &&
                                    tr.ReturnArrivalDate.Value.Date == today);
-
             return new TravelLegCountsDto
             {
                 TodayOutboundDepartureCount = outboundDepartures,
@@ -77,14 +72,16 @@ namespace Xpress_backend_V2.Repository
                 return 0;
             }
 
-
+            // Calculate the cutoff time before the query
+            var currentTime = DateTime.UtcNow;
+            var slaBreachCutoff = currentTime.Subtract(slaThreshold);
 
             return await _context.TravelRequests
                 .Include(tr => tr.CurrentStatus)
                 .CountAsync(tr => tr.IsActive &&
                                    tr.CurrentStatus != null &&
                                    statusNames.Contains(tr.CurrentStatus.StatusName) &&
-                                   (tr.UpdatedAt > tr.CreatedAt.Add(slaThreshold)));
+                                   tr.CreatedAt < slaBreachCutoff);
         }
     }
 }
