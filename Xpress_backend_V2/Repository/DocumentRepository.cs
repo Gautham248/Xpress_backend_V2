@@ -48,6 +48,38 @@ namespace XPRESS_V1_Backend.Repositories
             }
         }
 
+        public async Task<DocumentDTO> UpdateDocumentAsync(DocumentDTO documentDto)
+        {
+            switch (documentDto.IDType)
+            {
+                case "Passport": // Passport
+                    var passport = await _context.PassportDocs.FindAsync(documentDto.Id);
+                    if (passport == null) throw new KeyNotFoundException("Passport not found");
+                    _mapper.Map(documentDto, passport);
+                    passport.UploadedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                    return _mapper.Map<DocumentDTO>(passport);
+
+                case "Visa": // Visa
+                    var visa = await _context.VisaDocs.FindAsync(documentDto.Id);
+                    if (visa == null) throw new KeyNotFoundException("Visa not found");
+                    _mapper.Map(documentDto, visa);
+                    visa.UploadedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                    return _mapper.Map<DocumentDTO>(visa);
+
+                case "Aadhar": // Aadhar
+                    var aadhar = await _context.AadharDocs.FindAsync(documentDto.Id);
+                    if (aadhar == null) throw new KeyNotFoundException("Aadhar not found");
+                    _mapper.Map(documentDto, aadhar);
+                    aadhar.UploadedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                    return _mapper.Map<DocumentDTO>(aadhar);
+
+                default:
+                    throw new ArgumentException("Invalid document type ID");
+            }
+        }
         public async Task<bool> DeleteDocumentAsync(int documentId, string IDType)
         {
             switch (IDType)

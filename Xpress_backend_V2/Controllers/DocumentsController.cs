@@ -59,6 +59,12 @@ namespace Xpress_backend_V2.Controllers
         {
             try
             {
+                if (!ModelState.IsValid)
+                {
+                    var allErrors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage);
+                    return BadRequest(new { Message = "Validation failed", Errors = allErrors });
+                }
+
                 if (DocumentDTO == null)
                 {
                     return BadRequest("Request body is empty. Please provide valid document data.");
@@ -105,31 +111,34 @@ namespace Xpress_backend_V2.Controllers
         }
 
 
-        // PUT: api/documents
-        //[HttpPut]
-        //public async Task<ActionResult<DocumentDTO>> UpdateDocument([FromBody] DocumentDTO DocumentDTO)
-        //{
-        //    try
-        //    {
-        //        if (DocumentDTO.IDType < 1 || DocumentDTO.IDType > 3)
-        //            return BadRequest("Invalid document type ID. Valid values: 1=Passport, 2=Visa, 3=Aadhar");
+        // PUT: api/documents/{id}
+        [HttpPut("{id}")]
+        public async Task<ActionResult<DocumentDTO>> UpdateDocument(int id, [FromBody] DocumentDTO documentDTO)
+        {
+            try
+            {
+                var validTypes = new[] { "Passport", "Visa", "Aadhar" };
 
-        //        if (DocumentDTO.Id == null)
-        //            return BadRequest("Document ID is required for update");
+                if (!validTypes.Contains(documentDTO.IDType))
+                    return BadRequest("Invalid document type ID. Valid values: Passport, Visa, Aadhar");
 
-        //        var updatedDocument = await _repository.UpdateDocumentAsync(DocumentDTO);
-        //        return Ok(updatedDocument);
-        //    }
-        //    catch (KeyNotFoundException ex)
-        //    {
-        //        return NotFound(ex.Message);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError(ex, "Error updating document");
-        //        return StatusCode(500, "Internal server error");
-        //    }
-        //}
+                // Assign the route ID to the DTO
+                documentDTO.Id = id;
+
+                var updatedDocument = await _repository.UpdateDocumentAsync(documentDTO);
+                return Ok(updatedDocument);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating document");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
 
         // DELETE: api/documents/5/type/1
         [HttpDelete("{documentId}/type/{IDType}")]

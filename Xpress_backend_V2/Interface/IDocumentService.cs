@@ -6,6 +6,8 @@ namespace Xpress_backend_V2.Interface
     {
         // Document operations
         Task<DocumentDTO> AddDocumentAsync(DocumentDTO DocumentDTO);
+        Task<DocumentDTO> UpdateDocumentAsync(DocumentDTO DocumentDTO);
+
         Task<bool> DeleteDocumentAsync(int documentId, string idType);
 
         // Get operations
