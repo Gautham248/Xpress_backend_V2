@@ -296,7 +296,7 @@ namespace Xpress_backend_V2.Controllers
         }
 
         //Travel Request By DU Head
-        [HttpGet("ByProjectManager/{email}")]
+        [HttpGet("ByDUH/{email}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
         [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
