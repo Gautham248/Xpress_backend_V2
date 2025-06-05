@@ -58,5 +58,13 @@ namespace Xpress_backend_V2.Repository
                 await _context.SaveChangesAsync();
             }
         }
+
+        public async Task<List<string>> GetAllProjectCodesAsync()
+        {
+            return await _context.RMTs
+                .Select(r => r.ProjectCode)
+                .Distinct()
+                .ToListAsync();
+        }
     }
 }
