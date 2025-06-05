@@ -23,6 +23,9 @@ namespace Xpress_backend_V2.Profiles
 .ForMember(dest => dest.IsActive, opt => opt.Ignore());
 
             CreateMap<TravelRequest, TravelRequestResponseDTO>();
+
+            CreateMap<AuditLog, AuditLogResponseDTO>();
+            CreateMap<AuditLogDTO, AuditLog>();
         }
     }
 }
