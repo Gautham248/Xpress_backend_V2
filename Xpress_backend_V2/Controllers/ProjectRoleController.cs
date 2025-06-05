@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
@@ -6,7 +7,9 @@ using Xpress_backend_V2.Models;
 namespace Xpress_backend_V2.Controllers
 {
     [ApiController]
+    [Authorize(Roles = "Project Manager,Vice President,Admin")] 
     [Route("api/[controller]")]
+
     public class ProjectRoleController : ControllerBase
     {
         private readonly IProjectRoleService _projectRoleService;
