@@ -161,6 +161,17 @@ namespace Xpress_backend_V2.Controllers
                     travelRequestEntity.ReturnArrivalDate = null;
                 }
 
+                // Additional validation for pickup/drop-off fields
+                if (travelRequestEntity.IsPickUpRequired && string.IsNullOrWhiteSpace(travelRequestEntity.PickUpPlace))
+                {
+                    ModelState.AddModelError(nameof(travelRequestCreateDto.PickUpPlace), "Pick-up place is required when pick-up is requested.");
+                }
+
+                if (travelRequestEntity.IsDropOffRequired && string.IsNullOrWhiteSpace(travelRequestEntity.DropOffPlace))
+                {
+                    ModelState.AddModelError(nameof(travelRequestCreateDto.DropOffPlace), "Drop-off place is required when drop-off is requested.");
+                }
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
@@ -195,9 +206,7 @@ namespace Xpress_backend_V2.Controllers
                 _logger.LogError(ex, "An unexpected error occurred while creating travel request for UserID {UserId}.", travelRequestCreateDto.UserId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
             }
-        }
-
-        // Travel Request APIs
+        } // Travel Request APIs
         [HttpGet("travelrequests")]
         public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetTravelRequests()
         {
