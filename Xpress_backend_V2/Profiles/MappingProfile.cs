@@ -6,7 +6,8 @@ namespace Xpress_backend_V2.Profiles
 {
     public class MappingProfile : Profile
     {
-        public MappingProfile() {
+        public MappingProfile()
+        {
             CreateMap<TravelRequestDTO, TravelRequest>();
             CreateMap<TravelRequest, TravelRequestDTO>();
             CreateMap<TravelRequestCreateDTO, TravelRequest>()
@@ -26,6 +27,16 @@ namespace Xpress_backend_V2.Profiles
 
             CreateMap<AuditLog, AuditLogResponseDTO>();
             CreateMap<AuditLogDTO, AuditLog>();
+
+            CreateMap<CreateTicketOptionDTO, TicketOption>();
+            CreateMap<UpdateTicketOptionDTO, TicketOption>()
+                .ForMember(dest => dest.OptionId, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.IsSelected, opt => opt.Ignore());
+
+            CreateMap<TicketOption, TicketOptionResponseDTO>();
         }
     }
 }
