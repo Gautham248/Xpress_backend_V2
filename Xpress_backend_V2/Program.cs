@@ -36,6 +36,7 @@ builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
 builder.Services.AddScoped<ICalendarTravelRequestRepository,CalendarTravelRequestRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITravelRequestStatsRepository, TravelRequestStatsRepository>();
 
 
 builder.Services.AddAutoMapper(typeof(Program));
