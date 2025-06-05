@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System.Net;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Xpress_backend_V2.Interface;
+using Xpress_backend_V2.Models;
 using Xpress_backend_V2.Models.DTO;
 
 namespace Xpress_backend_V2.Controllers
@@ -11,28 +13,36 @@ namespace Xpress_backend_V2.Controllers
     {
         private readonly ICalendarTravelRequestRepository _calendarRepository;
         private const int MaxDateRangeDays = 90; // Consistent date range limit
+        protected APIResponse _response;
 
         public CalendarController(ICalendarTravelRequestRepository calendarRepository)
         {
             _calendarRepository = calendarRepository;
+            _response = new APIResponse();
         }
 
-        /// <summary>
-        /// Gets all relevant travel request events for the calendar.
-        /// </summary>
         [HttpGet("events")] // e.g., GET api/calendar/events
-        public async Task<ActionResult<IEnumerable<CalendarTravelRequestDTO>>> GetCalendarEvents()
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<APIResponse>> GetCalendarEvents()
         {
             try
             {
                 var travelRequests = await _calendarRepository.GetCalendarEventsAsync();
-                return Ok(travelRequests);
+
+                _response.IsSuccess = true;
+                _response.Result = travelRequests;
+                _response.StatusCode = HttpStatusCode.OK;
+                return Ok(_response);
             }
             catch (Exception ex)
             {
-                // It's good practice to log the exception details (ex) using a logging framework
-                Console.WriteLine($"Error in GetCalendarEvents: {ex.Message}"); // Basic logging for now
-                return StatusCode(500, "An unexpected error occurred while retrieving calendar events.");
+                Console.WriteLine($"Error in GetCalendarEvents: {ex.Message}"); // Basic logging 
+
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add("An unexpected error occurred while retrieving calendar events.");
+                return StatusCode(500, _response);
             }
         }
 
@@ -40,35 +50,55 @@ namespace Xpress_backend_V2.Controllers
         /// Gets calendar travel request events within a specified date range.
         /// Checks OutboundDepartureDate and ReturnArrivalDate.
         /// </summary>
-        /// <param name="startDate">The start date of the range.</param>
-        /// <param name="endDate">The end date of the range.</param>
         [HttpGet("events/range")] // e.g., GET api/calendar/events/range?startDate=...&endDate=...
-        public async Task<ActionResult<IEnumerable<CalendarTravelRequestDTO>>> GetCalendarEventsByRange(
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<APIResponse>> GetCalendarEventsByRange(
             [FromQuery] DateTime startDate,
             [FromQuery] DateTime endDate)
         {
             if (startDate == default || endDate == default)
             {
-                return BadRequest("Both startDate and endDate query parameters are required.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("Both startDate and endDate query parameters are required.");
+                return BadRequest(_response);
             }
+
             if (startDate > endDate)
             {
-                return BadRequest("The startDate cannot be later than the endDate.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("The startDate cannot be later than the endDate.");
+                return BadRequest(_response);
             }
+
             if (endDate - startDate > TimeSpan.FromDays(MaxDateRangeDays))
             {
-                return BadRequest($"The date range cannot exceed {MaxDateRangeDays} days.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add($"The date range cannot exceed {MaxDateRangeDays} days.");
+                return BadRequest(_response);
             }
 
             try
             {
                 var travelRequests = await _calendarRepository.GetCalendarEventsByRangeAsync(startDate, endDate);
-                return Ok(travelRequests);
+
+                _response.IsSuccess = true;
+                _response.Result = travelRequests;
+                _response.StatusCode = HttpStatusCode.OK;
+                return Ok(_response);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in GetCalendarEventsByRange: {ex.Message}");
-                return StatusCode(500, "An unexpected error occurred while retrieving calendar events by range.");
+
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add("An unexpected error occurred while retrieving calendar events by range.");
+                return StatusCode(500, _response);
             }
         }
 
@@ -76,85 +106,122 @@ namespace Xpress_backend_V2.Controllers
         /// Gets calendar travel request events within a specified date range using an optimized query.
         /// Checks OutboundDepartureDate and ReturnArrivalDate.
         /// </summary>
-        /// <param name="startDate">The start date of the range.</param>
-        /// <param name="endDate">The end date of the range.</param>
         [HttpGet("events/range-optimized")] // e.g., GET api/calendar/events/range-optimized?startDate=...&endDate=...
-        public async Task<ActionResult<IEnumerable<CalendarTravelRequestDTO>>> GetCalendarEventsByRangeOptimized(
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<APIResponse>> GetCalendarEventsByRangeOptimized(
             [FromQuery] DateTime startDate,
             [FromQuery] DateTime endDate)
         {
             if (startDate == default || endDate == default)
             {
-                return BadRequest("Both startDate and endDate query parameters are required.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("Both startDate and endDate query parameters are required.");
+                return BadRequest(_response);
             }
+
             if (startDate > endDate)
             {
-                return BadRequest("The startDate cannot be later than the endDate.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("The startDate cannot be later than the endDate.");
+                return BadRequest(_response);
             }
+
             if (endDate - startDate > TimeSpan.FromDays(MaxDateRangeDays))
             {
-                return BadRequest($"The date range cannot exceed {MaxDateRangeDays} days.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add($"The date range cannot exceed {MaxDateRangeDays} days.");
+                return BadRequest(_response);
             }
 
             try
             {
                 var travelRequests = await _calendarRepository.GetCalendarEventsByRangeOptimizedAsync(startDate, endDate);
-                return Ok(travelRequests);
+
+                _response.IsSuccess = true;
+                _response.Result = travelRequests;
+                _response.StatusCode = HttpStatusCode.OK;
+                return Ok(_response);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in GetCalendarEventsByRangeOptimized: {ex.Message}");
-                return StatusCode(500, "An unexpected error occurred while retrieving optimized calendar events by range.");
+
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add("An unexpected error occurred while retrieving optimized calendar events by range.");
+                return StatusCode(500, _response);
             }
         }
 
         /// <summary>
         /// Gets calendar travel request events of a specific type (OutboundDeparture or ReturnArrival) within a date range.
         /// </summary>
-        /// <param name="startDate">The start date of the range.</param>
-        /// <param name="endDate">The end date of the range.</param>
-        /// <param name="eventType">The type of event ("OutboundDeparture" or "ReturnArrival").</param>
         [HttpGet("events/range-by-type")] // e.g., GET api/calendar/events/range-by-type?startDate=...&endDate=...&eventType=OutboundDeparture
-        public async Task<ActionResult<IEnumerable<CalendarTravelRequestDTO>>> GetCalendarEventsByTypeAndRange(
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<APIResponse>> GetCalendarEventsByTypeAndRange(
             [FromQuery] DateTime startDate,
             [FromQuery] DateTime endDate,
             [FromQuery] string eventType)
         {
             if (startDate == default || endDate == default)
             {
-                return BadRequest("Both startDate and endDate query parameters are required.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("Both startDate and endDate query parameters are required.");
+                return BadRequest(_response);
             }
+
             if (startDate > endDate)
             {
-                return BadRequest("The startDate cannot be later than the endDate.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("The startDate cannot be later than the endDate.");
+                return BadRequest(_response);
             }
 
             var validEventTypes = new[] { "OutboundDeparture", "ReturnArrival" };
             if (string.IsNullOrWhiteSpace(eventType) || !validEventTypes.Contains(eventType, StringComparer.OrdinalIgnoreCase))
             {
-                return BadRequest($"The eventType query parameter is required and must be one of: {string.Join(", ", validEventTypes)}.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add($"The eventType query parameter is required and must be one of: {string.Join(", ", validEventTypes)}.");
+                return BadRequest(_response);
             }
 
-            // Normalize eventType to match the casing used in the repository if needed,
-            // though the repository switch statement should handle various casings if written carefully.
-            // For consistency, find the exact match from validEventTypes:
             var normalizedEventType = validEventTypes.First(vet => vet.Equals(eventType, StringComparison.OrdinalIgnoreCase));
-
 
             if (endDate - startDate > TimeSpan.FromDays(MaxDateRangeDays))
             {
-                return BadRequest($"The date range cannot exceed {MaxDateRangeDays} days.");
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add($"The date range cannot exceed {MaxDateRangeDays} days.");
+                return BadRequest(_response);
             }
 
             try
             {
                 var travelRequests = await _calendarRepository.GetCalendarEventsByTypeAndRangeAsync(startDate, endDate, normalizedEventType);
-                return Ok(travelRequests);
+
+                _response.IsSuccess = true;
+                _response.Result = travelRequests;
+                _response.StatusCode = HttpStatusCode.OK;
+                return Ok(_response);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in GetCalendarEventsByTypeAndRange: {ex.Message}");
-                return StatusCode(500, "An unexpected error occurred while retrieving calendar events by type and range.");
+
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add("An unexpected error occurred while retrieving calendar events by type and range.");
+                return StatusCode(500, _response);
             }
         }
     }
