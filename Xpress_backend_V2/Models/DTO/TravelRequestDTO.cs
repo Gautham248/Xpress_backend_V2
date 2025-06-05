@@ -17,8 +17,8 @@
         public bool IsPickupRequired { get; set; }
         public bool IsDropoffRequired { get; set; }
 
-        public string PickupLocation { get; set; }
-        public string DropoffLocation { get; set; }
+        public string PickupPlace { get; set; }
+        public string DropoffPlace{ get; set; }
         public string Comments { get; set; }
         public string PurposeOfTravel { get; set; }
         public bool IsVegetarian { get; set; }

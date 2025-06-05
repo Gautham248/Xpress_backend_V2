@@ -245,8 +245,8 @@ namespace Xpress_backend_V2.Controllers
                     IsAccommodationRequired = tr.IsAccommodationRequired,
                     IsPickupRequired = tr.IsPickUpRequired,
                     IsDropoffRequired = tr.IsDropOffRequired,
-                    PickupLocation = tr.IsPickUpRequired ? tr.SourcePlace : null, // Assuming pickup location is same as SourcePlace
-                    DropoffLocation = tr.IsDropOffRequired ? tr.DestinationPlace : null, // Assuming dropoff location is same as DestinationPlace
+                    PickupPlace = tr.IsPickUpRequired ? tr.PickUpPlace : null, // Assuming pickup location is same as SourcePlace
+                    DropoffPlace = tr.IsDropOffRequired ? tr.DropOffPlace : null, // Assuming dropoff location is same as DestinationPlace
                     Comments = tr.Comments,
                     PurposeOfTravel = tr.PurposeOfTravel,
                     IsVegetarian = tr.IsVegetarian,
