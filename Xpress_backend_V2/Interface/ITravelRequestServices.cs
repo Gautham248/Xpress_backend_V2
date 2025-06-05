@@ -20,5 +20,8 @@ namespace Xpress_backend_V2.Interface
         Task<List<TravelInfoBannerDTO>> GetTravelInfoBannerDetailsAsync(string requestId);
 
         Task<TravelRequest> CreateTravelRequestAsync(TravelRequest travelRequest);
+
+        // Travel Info
+        Task<List<TravelInfoDTO>> GetTravelInfoAsync(string requestId);
     }
 }
