@@ -28,7 +28,7 @@ builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
 builder.Services.AddScoped<IPassportDocServices, PassportDocRepository>();
 builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
 builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
-
+builder.Services.AddScoped<ICalendarTravelRequestRepository,CalendarTravelRequestRepository>();
 
 
 builder.Services.AddAutoMapper(typeof(Program));
