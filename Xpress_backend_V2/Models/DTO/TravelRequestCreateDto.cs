@@ -16,8 +16,10 @@
         public DateTime? ReturnDepartureDate { get; set; }
         public DateTime? ReturnArrivalDate { get; set; }
         public bool IsAccommodationRequired { get; set; }
-        public bool IsDropOffRequired { get; set; }
+        public bool IsDropOffRequired { get; set; } 
+        public string? DropOffPlace { get; set; }
         public bool IsPickUpRequired { get; set; }
+        public string? PickUpPlace { get; set; }
         public string? Comments { get; set; }
         public string PurposeOfTravel { get; set; }
         public bool IsVegetarian { get; set; }
