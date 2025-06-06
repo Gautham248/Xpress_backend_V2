@@ -9,7 +9,7 @@ namespace Xpress_backend_V2.Repository
     public class CalendarTravelRequestRepository : ICalendarTravelRequestRepository
     {
         private readonly ApiDbContext _context;
-        private readonly string[] _validStatuses = { "PendingReview", "Confirmed", "In-transit", "Returned", "Closed" };
+        private readonly string[] _validStatuses = { "PendingReview", "TicketDispatched", "In-transit", "Returned", "Closed" };
 
         public CalendarTravelRequestRepository(ApiDbContext context)
         {

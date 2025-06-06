@@ -37,7 +37,7 @@ builder.Services.AddScoped<ICalendarTravelRequestRepository,CalendarTravelReques
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITravelRequestStatsRepository, TravelRequestStatsRepository>();
-
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 
