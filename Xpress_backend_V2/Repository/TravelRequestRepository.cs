@@ -9,10 +9,12 @@ namespace Xpress_backend_V2.Repository
     public class TravelRequestRepository : ITravelRequestServices
     {
         private readonly ApiDbContext _context;
+        private readonly ILogger<TravelRequestRepository> _logger;
 
-        public TravelRequestRepository(ApiDbContext context)
+        public TravelRequestRepository(ApiDbContext context, ILogger<TravelRequestRepository> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<TravelRequest>> GetAllAsync()
@@ -154,5 +156,80 @@ namespace Xpress_backend_V2.Repository
                         };
             return await query.ToListAsync();
         }
+
+        public async Task<TravelRequest> GetTravelRequestByIdAsync(string requestId)
+        {
+            try
+            {
+                _logger.LogInformation("Retrieving travel request with ID {RequestId}.", requestId);
+
+                var travelRequest = await _context.TravelRequests
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(tr => tr.RequestId == requestId);
+
+                if (travelRequest == null)
+                {
+                    _logger.LogWarning("Travel request with ID {RequestId} not found.", requestId);
+                    return null;
+                }
+
+                _logger.LogInformation("Successfully retrieved travel request with ID {RequestId}.", requestId);
+                return travelRequest;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving travel request with ID {RequestId}.", requestId);
+                throw;
+            }
+        }
+
+        public async Task<TravelRequest> UpdateTravelRequestAsync(TravelRequest travelRequestEntity)
+        {
+            try
+            {
+                _logger.LogInformation("Updating travel request with ID {RequestId}.", travelRequestEntity.RequestId);
+
+                // Retrieve the existing travel request
+                var existingTravelRequest = await _context.TravelRequests
+                    .FirstOrDefaultAsync(tr => tr.RequestId == travelRequestEntity.RequestId);
+
+                if (existingTravelRequest == null)
+                {
+                    _logger.LogWarning("Travel request with ID {RequestId} not found for update.", travelRequestEntity.RequestId);
+                    return null;
+                }
+
+                // Update the entity with new values
+                _context.Entry(existingTravelRequest).CurrentValues.SetValues(travelRequestEntity);
+
+                // Ensure CreatedAt is not overwritten
+                existingTravelRequest.CreatedAt = _context.Entry(existingTravelRequest).OriginalValues.GetValue<DateTime>("CreatedAt");
+
+                // Update the ModifiedAt timestamp
+                existingTravelRequest.UpdatedAt = DateTime.UtcNow;
+
+                // Save changes to the database
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Successfully updated travel request with ID {RequestId}.", travelRequestEntity.RequestId);
+                return existingTravelRequest;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogError(ex, "Concurrency error occurred while updating travel request with ID {RequestId}.", travelRequestEntity.RequestId);
+                throw;
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Database error occurred while updating travel request with ID {RequestId}.", travelRequestEntity.RequestId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unexpected error occurred while updating travel request with ID {RequestId}.", travelRequestEntity.RequestId);
+                throw;
+            }
+        }
+
     }
 }
