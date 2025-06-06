@@ -5,7 +5,6 @@
         public int VisaDocId { get; set; } // PK
         public int UserId { get; set; } // FK → Users
         public string VisaNumber { get; set; }
-        public string VisaType { get; set; }
         public string IssuingCountry { get; set; }
         public DateTime IssueDate { get; set; }
         public DateTime ExpiryDate { get; set; }

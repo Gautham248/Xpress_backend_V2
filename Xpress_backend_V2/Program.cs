@@ -33,13 +33,15 @@ builder.Services.AddScoped<IAirlineServices, AirlineRepository>();
 builder.Services.AddScoped<IRequestStatusServices, RequestStatusRepository>();
 builder.Services.AddScoped<IUserNotificationServices, UserNotificationRepository>();
 builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
-builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
-builder.Services.AddScoped<IPassportDocServices, PassportDocRepository>();
-builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
+//builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
+//builder.Services.AddScoped<IPassportDocServices, PassportDocRepository>();
+//builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
 builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
 builder.Services.AddScoped<ICalendarTravelRequestRepository,CalendarTravelRequestRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITravelRequestStatsRepository, TravelRequestStatsRepository>();
+builder.Services.AddScoped<IDocumentService, DocumentRepository>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 
@@ -58,6 +60,13 @@ builder.Services.AddCors(options =>
                   .AllowAnyMethod();
         });
 });
+
+// Register the RmtDataSyncService as a hosted service
+//builder.Services.AddHostedService<RmtDataSyncService>();
+
+builder.Services.AddScoped<IDocumentService, DocumentRepository>();
+builder.Services.AddAutoMapper(typeof(Program)); // If using AutoMapper
+
 
 // Add CORS policy to allow all frontends
 builder.Services.AddCors(options =>

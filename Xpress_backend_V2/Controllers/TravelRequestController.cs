@@ -213,7 +213,151 @@ namespace Xpress_backend_V2.Controllers
                 _logger.LogError(ex, "An unexpected error occurred while creating travel request for UserID {UserId}.", travelRequestCreateDto.UserId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
             }
-        } // Travel Request APIs
+        }
+
+        //UPDATE TRAVEL REQEUEST ( +AUDIT LOG ENTRY)
+        [HttpPut("update/{requestId}")]
+        [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateTravelRequest(string requestId, [FromBody] TravelRequestCreateDTO travelRequestUpdateDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                // Check if the travel request exists
+                var existingTravelRequest = await _travelRequestService.GetTravelRequestByIdAsync(requestId);
+                if (existingTravelRequest == null)
+                {
+                    return NotFound($"Travel request with ID {requestId} not found.");
+                }
+
+                // Map the DTO to entity
+                var travelRequestEntity = _mapper.Map<TravelRequest>(travelRequestUpdateDto);
+                travelRequestEntity.RequestId = requestId; // Ensure the ID remains the same
+                travelRequestEntity.CurrentStatusId = 1; // Set status to 1 as requested
+                travelRequestEntity.IsActive = existingTravelRequest.IsActive; // Preserve existing IsActive status
+
+                // Ensure UTC for date fields
+                travelRequestEntity.OutboundDepartureDate = EnsureUtc(travelRequestUpdateDto.OutboundDepartureDate);
+                travelRequestEntity.OutboundArrivalDate = EnsureUtc(travelRequestUpdateDto.OutboundArrivalDate);
+                travelRequestEntity.ReturnDepartureDate = EnsureUtc(travelRequestUpdateDto.ReturnDepartureDate);
+                travelRequestEntity.ReturnArrivalDate = EnsureUtc(travelRequestUpdateDto.ReturnArrivalDate);
+
+                // Validation for date fields
+                if (travelRequestEntity.OutboundArrivalDate <= travelRequestEntity.OutboundDepartureDate)
+                {
+                    ModelState.AddModelError(nameof(travelRequestUpdateDto.OutboundArrivalDate), "Outbound arrival date must be after outbound departure date.");
+                }
+
+                if (travelRequestEntity.IsRoundTrip)
+                {
+                    if (!travelRequestEntity.ReturnDepartureDate.HasValue || !travelRequestEntity.ReturnArrivalDate.HasValue)
+                    {
+                        ModelState.AddModelError(nameof(travelRequestUpdateDto.IsRoundTrip), "Return departure and arrival dates are required for round trips.");
+                    }
+                    else
+                    {
+                        if (travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate)
+                        {
+                            ModelState.AddModelError(nameof(travelRequestUpdateDto.ReturnDepartureDate), "Return departure date must be after outbound arrival date.");
+                        }
+                        if (travelRequestEntity.ReturnArrivalDate.Value <= travelRequestEntity.ReturnDepartureDate.Value)
+                        {
+                            ModelState.AddModelError(nameof(travelRequestUpdateDto.ReturnArrivalDate), "Return arrival date must be after return departure date.");
+                        }
+                    }
+                }
+                else
+                {
+                    travelRequestEntity.ReturnDepartureDate = null;
+                    travelRequestEntity.ReturnArrivalDate = null;
+                }
+
+                // Additional validation for pickup/drop-off fields
+                if (travelRequestEntity.IsPickUpRequired && string.IsNullOrWhiteSpace(travelRequestEntity.PickUpPlace))
+                {
+                    ModelState.AddModelError(nameof(travelRequestUpdateDto.PickUpPlace), "Pick-up place is required when pick-up is requested.");
+                }
+
+                if (travelRequestEntity.IsDropOffRequired && string.IsNullOrWhiteSpace(travelRequestEntity.DropOffPlace))
+                {
+                    ModelState.AddModelError(nameof(travelRequestUpdateDto.DropOffPlace), "Drop-off place is required when drop-off is requested.");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                // Update the travel request
+                TravelRequest updatedTravelRequest = await _travelRequestService.UpdateTravelRequestAsync(travelRequestEntity);
+
+                // Create audit log entry
+                var auditLog = new AuditLog
+                {
+                    RequestId = updatedTravelRequest.RequestId,
+                    UserId = updatedTravelRequest.UserId,
+                    ActionType = "REQUEST_MODIFIED",
+                    OldStatusId = existingTravelRequest.CurrentStatusId,
+                    NewStatusId = updatedTravelRequest.CurrentStatusId,
+                    ChangeDescription = "Travel request modified.",
+                    Timestamp = DateTime.UtcNow
+                };
+                await _auditLogService.CreateAuditLogAsync(auditLog);
+
+                // Map to response DTO
+                var responseDto = _mapper.Map<TravelRequestResponseDTO>(updatedTravelRequest);
+
+                return Ok(responseDto);
+            }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogError(dbEx, "Database update error occurred while updating travel request ID {RequestId}. Check foreign key constraints.", requestId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "A database error occurred. Ensure all referenced IDs (UserId, TravelModeId, ProjectCode) are valid.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unexpected error occurred while updating travel request ID {RequestId}.", requestId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
+            }
+        }
+
+        [HttpGet("{requestId}")]
+        [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetTravelRequestById(string requestId)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching travel request with ID {RequestId}.", requestId);
+
+                var travelRequest = await _travelRequestService.GetTravelRequestByIdAsync(requestId);
+                if (travelRequest == null)
+                {
+                    _logger.LogWarning("Travel request with ID {RequestId} not found.", requestId);
+                    return NotFound($"Travel request with ID {requestId} not found.");
+                }
+
+                var responseDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
+
+                _logger.LogInformation("Successfully fetched travel request with ID {RequestId}.", requestId);
+                return Ok(responseDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unexpected error occurred while fetching travel request with ID {RequestId}.", requestId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
+            }
+        }
+
+
         [HttpGet("travelrequests")]
         public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetTravelRequests()
         {
@@ -232,15 +376,21 @@ namespace Xpress_backend_V2.Controllers
 
         // GET: api/TravelRequest/ByProjectManager/{email}
         [HttpGet("ByProjectManager/{email}")]
-        public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetActiveTravelRequestsByProjectManager(string email)
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> GetActiveTravelRequestsByProjectManager(string email)
         {
-            // Validate email
+            var apiResponse = new APIResponse();
+
             if (string.IsNullOrWhiteSpace(email))
             {
-                return BadRequest("Project manager email is required.");
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                apiResponse.ErrorMessages.Add("Project manager email is required.");
+                return BadRequest(apiResponse);
             }
 
-            // Query to get active travel requests for the project manager's project
             var travelRequests = await _context.TravelRequests
                 .Where(tr => tr.Project.ProjectManagerEmail == email && tr.IsActive)
                 .Include(tr => tr.Project)
@@ -261,8 +411,8 @@ namespace Xpress_backend_V2.Controllers
                     IsAccommodationRequired = tr.IsAccommodationRequired,
                     IsPickupRequired = tr.IsPickUpRequired,
                     IsDropoffRequired = tr.IsDropOffRequired,
-                    PickupPlace = tr.IsPickUpRequired ? tr.PickUpPlace : null, // Assuming pickup location is same as SourcePlace
-                    DropoffPlace = tr.IsDropOffRequired ? tr.DropOffPlace : null, // Assuming dropoff location is same as DestinationPlace
+                    PickupPlace = tr.IsPickUpRequired ? tr.PickUpPlace : null,
+                    DropoffPlace = tr.IsDropOffRequired ? tr.DropOffPlace : null,
                     Comments = tr.Comments,
                     PurposeOfTravel = tr.PurposeOfTravel,
                     IsVegetarian = tr.IsVegetarian,
@@ -272,26 +422,103 @@ namespace Xpress_backend_V2.Controllers
                     UploadedTicketPdfPath = tr.TicketDocumentPath,
                     CreatedAt = tr.CreatedAt,
                     UpdatedAt = tr.UpdatedAt,
-                    EmployeeName = tr.User.EmployeeName, // Assuming User has a Name property
+                    EmployeeName = tr.User.EmployeeName,
                     IsInternational = tr.IsInternational,
                     IsRoundTrip = tr.IsRoundTrip,
                     ProjectName = tr.Project.ProjectName,
-                    TravelModeName = tr.TravelMode.TravelModeName, // Assuming TravelMode has a Name property
-                    CurrentStatusName = tr.CurrentStatus.StatusName, // Assuming RequestStatus has a Name property
+                    TravelModeName = tr.TravelMode.TravelModeName,
+                    CurrentStatusName = tr.CurrentStatus.StatusName,
                     SelectedTicketOptionId = tr.SelectedTicketOptionId
                 })
                 .ToListAsync();
 
             if (!travelRequests.Any())
             {
-                return NotFound("No active travel requests found for the specified project manager.");
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.NotFound;
+                apiResponse.ErrorMessages.Add("No active travel requests found for the specified project manager.");
+                return NotFound(apiResponse);
             }
 
-            return Ok(travelRequests);
+            apiResponse.IsSuccess = true;
+            apiResponse.StatusCode = HttpStatusCode.OK;
+            apiResponse.Result = travelRequests;
+            return Ok(apiResponse);
         }
 
-        // Travel Request Details APIs
+        //Travel Request By DU Head
+        [HttpGet("ByDUH/{email}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> GetActiveTravelRequestsByDUHead(string email)
+        {
+            var apiResponse = new APIResponse();
 
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                apiResponse.ErrorMessages.Add("DU Head email is required.");
+                return BadRequest(apiResponse);
+            }
+
+            var travelRequests = await _context.TravelRequests
+                .Where(tr => tr.Project.DuHeadEmail == email && tr.IsActive)
+                .Include(tr => tr.Project)
+                .Include(tr => tr.TravelMode)
+                .Include(tr => tr.CurrentStatus)
+                .Include(tr => tr.User)
+                .Select(tr => new TravelRequestDTO
+                {
+                    RequestId = tr.RequestId,
+                    SourcePlace = tr.SourcePlace,
+                    SourceCountry = tr.SourceCountry,
+                    DestinationPlace = tr.DestinationPlace,
+                    DestinationCountry = tr.DestinationCountry,
+                    OutboundDepartureDate = tr.OutboundDepartureDate,
+                    OutboundArrivalDate = tr.OutboundArrivalDate,
+                    ReturnDepartureDate = tr.ReturnDepartureDate,
+                    ReturnArrivalDate = tr.ReturnArrivalDate,
+                    IsAccommodationRequired = tr.IsAccommodationRequired,
+                    IsPickupRequired = tr.IsPickUpRequired,
+                    IsDropoffRequired = tr.IsDropOffRequired,
+                    PickupPlace = tr.IsPickUpRequired ? tr.PickUpPlace : null,
+                    DropoffPlace = tr.IsDropOffRequired ? tr.DropOffPlace : null,
+                    Comments = tr.Comments,
+                    PurposeOfTravel = tr.PurposeOfTravel,
+                    IsVegetarian = tr.IsVegetarian,
+                    AttendedCct = tr.AttendedCCT,
+                    TravelAgencyName = tr.TravelAgencyName,
+                    TotalExpense = tr.TotalExpense,
+                    UploadedTicketPdfPath = tr.TicketDocumentPath,
+                    CreatedAt = tr.CreatedAt,
+                    UpdatedAt = tr.UpdatedAt,
+                    EmployeeName = tr.User.EmployeeName,
+                    IsInternational = tr.IsInternational,
+                    IsRoundTrip = tr.IsRoundTrip,
+                    ProjectName = tr.Project.ProjectName,
+                    TravelModeName = tr.TravelMode.TravelModeName,
+                    CurrentStatusName = tr.CurrentStatus.StatusName,
+                    SelectedTicketOptionId = tr.SelectedTicketOptionId
+                })
+                .ToListAsync();
+
+            if (!travelRequests.Any())
+            {
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.NotFound;
+                apiResponse.ErrorMessages.Add("No active travel requests found for the specified project manager.");
+                return NotFound(apiResponse);
+            }
+
+            apiResponse.IsSuccess = true;
+            apiResponse.StatusCode = HttpStatusCode.OK;
+            apiResponse.Result = travelRequests;
+            return Ok(apiResponse);
+        }
+
+        
         // Travel InfoBanner API
         [HttpGet("infobanner/{requestId}")]
         public async Task<ActionResult<APIResponse>> GetTravelInfoBannerDetails(string requestId)
