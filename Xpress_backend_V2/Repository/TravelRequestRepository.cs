@@ -232,5 +232,30 @@ namespace Xpress_backend_V2.Repository
             }
         }
 
+
+        public async Task<List<TravelRequest>> GetTravelRequestsByUserIdAsync(int userId)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching travel requests for UserID {UserId}.", userId);
+
+                var travelRequests = await _context.TravelRequests
+                    .AsNoTracking()
+                    .Where(tr => tr.UserId == userId && tr.IsActive)
+                    .ToListAsync();
+
+                _logger.LogInformation("Successfully fetched {Count} travel requests for UserID {UserId}.", travelRequests.Count, userId);
+                return travelRequests;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while fetching travel requests for UserID {UserId}.", userId);
+                throw;
+            }
+        }
+
+
+
+
     }
 }

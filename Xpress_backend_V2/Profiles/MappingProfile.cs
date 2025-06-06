@@ -37,6 +37,16 @@ namespace Xpress_backend_V2.Profiles
                 .ForMember(dest => dest.IsSelected, opt => opt.Ignore());
 
             CreateMap<TicketOption, TicketOptionResponseDTO>();
+
+
+            CreateMap<TravelRequest, TravelRequest_EmployeeDashboardDTO>()
+           .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.RequestId))
+           .ForMember(dest => dest.DepartureDate, opt => opt.MapFrom(src => src.OutboundDepartureDate.ToString("o")))
+           .ForMember(dest => dest.ReturnDate, opt => opt.MapFrom(src => src.ReturnArrivalDate.HasValue ? src.ReturnArrivalDate.Value.ToString("o") : null))
+           .ForMember(dest => dest.Destination, opt => opt.MapFrom(src => src.DestinationCountry))
+           .ForMember(dest => dest.Purpose, opt => opt.MapFrom(src => src.PurposeOfTravel))
+           .ForMember(dest => dest.CurrentStatusId, opt => opt.MapFrom(src => src.CurrentStatusId));
+            // Status is set in the controller after mapping
         }
     }
 }

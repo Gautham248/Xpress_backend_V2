@@ -26,5 +26,7 @@ namespace Xpress_backend_V2.Interface
         Task<TravelRequest> GetTravelRequestByIdAsync(string requestId);
 
         Task<TravelRequest> UpdateTravelRequestAsync(TravelRequest travelRequestEntity);
+        //Task<List<TravelRequest>> GetTravelRequestsByUserIdAsync(int userId);
+        //Task<string> GetStatusNameAsync(int statusId);
     }
 }

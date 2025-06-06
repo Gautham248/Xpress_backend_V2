@@ -513,39 +513,33 @@ namespace Xpress_backend_V2.Controllers
 
 
         // Travel Request Details APIs
-        // Get travel request by id
-        [HttpGet("{requestId}")]
-        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
-        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
-        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
-        public async Task<ActionResult<APIResponse>> GetTravelRequestById(string requestId)
+        [HttpGet("update-get/{requestId}")]
+        [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetTravelRequestByIdDetailed(string requestId)
         {
-            var localResponse = new APIResponse();
-
-            if (string.IsNullOrWhiteSpace(requestId))
+            try
             {
-                localResponse.IsSuccess = false;
-                localResponse.StatusCode = HttpStatusCode.BadRequest;
-                localResponse.ErrorMessages.Add("Travel Request ID cannot be empty.");
-                return BadRequest(localResponse);
+                _logger.LogInformation("Fetching travel request with ID {RequestId}.", requestId);
+
+                var travelRequest = await _travelRequestService.GetTravelRequestByIdAsync(requestId);
+                if (travelRequest == null)
+                {
+                    _logger.LogWarning("Travel request with ID {RequestId} not found.", requestId);
+                    return NotFound($"Travel request with ID {requestId} not found.");
+                }
+
+                var responseDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
+
+                _logger.LogInformation("Successfully fetched travel request with ID {RequestId}.", requestId);
+                return Ok(responseDto);
             }
-
-            var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
-
-            if (travelRequest == null)
+            catch (Exception ex)
             {
-                localResponse.IsSuccess = false;
-                localResponse.StatusCode = HttpStatusCode.NotFound;
-                localResponse.ErrorMessages.Add($"Travel request with ID '{requestId}' not found.");
-                return NotFound(localResponse);
+                _logger.LogError(ex, "An unexpected error occurred while fetching travel request with ID {RequestId}.", requestId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
             }
-
-            var responseDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
-
-            localResponse.IsSuccess = true;
-            localResponse.StatusCode = HttpStatusCode.OK;
-            localResponse.Result = responseDto;
-            return Ok(localResponse);
         }
 
         // Travel InfoBanner API
@@ -707,5 +701,39 @@ namespace Xpress_backend_V2.Controllers
             _response.StatusCode = HttpStatusCode.OK;
             return Ok(_response);
         }
+
+
+
+        //[HttpGet("user/{userId}")]
+        //[ProducesResponseType(typeof(List<TravelRequest_EmployeeDashboardDTO>), StatusCodes.Status200OK)]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
+        //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        //public async Task<IActionResult> GetTravelRequestsByUserId(int userId)
+        //{
+           
+
+        //    try
+        //    {
+        //        _logger.LogInformation("Fetching all travel requests for UserID {UserId}.", userId);
+
+        //        var travelRequests = await _travelRequestService.GetTravelRequestsByUserIdAsync(userId);
+
+        //        var responseDtos = _mapper.Map<List<TravelRequestResponseDTO>>(travelRequests);
+
+        //        // Map CurrentStatusId to status name (assuming a service method or lookup exists)
+        //        foreach (var dto in responseDtos)
+        //        {
+        //            dto.CurrentStatusId = await _travelRequestService.GetStatusNameAsync(dto.CurrentStatusId);
+        //        }
+
+        //        _logger.LogInformation("Successfully fetched {Count} travel requests for UserID {UserId}.", responseDtos.Count, userId);
+        //        return Ok(responseDtos);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError(ex, "An unexpected error occurred while fetching travel requests for UserID {UserId}.", userId);
+        //        return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
+        //    }
+        //}
     }
 }
