@@ -17,8 +17,11 @@ namespace Xpress_backend_V2.Controllers
         private readonly ApiDbContext _context;
         private readonly IMapper _mapper;
         private readonly IAuditLogServices _auditLogService;
+
         private readonly ILogger<TravelRequestController> _logger;
+        private readonly IAuditLogHandlerService _auditLogHandlerService;
         protected APIResponse _response;
+
 
         private const int DefaultInitialStatusId = 1;
 
@@ -26,6 +29,7 @@ namespace Xpress_backend_V2.Controllers
         public TravelRequestController(ITravelRequestServices travelRequestService,
             ApiDbContext context,
             IAuditLogServices auditLogService,
+            IAuditLogHandlerService auditLogHandler,
             IMapper mapper,
             ILogger<TravelRequestController> logger)
         {
@@ -34,6 +38,7 @@ namespace Xpress_backend_V2.Controllers
             _mapper = mapper;
             _context = context;
             _logger = logger;
+            _auditLogHandlerService = auditLogHandler;
             _response = new APIResponse();
         }
         private DateTime EnsureUtc(DateTime dt)
@@ -187,9 +192,11 @@ namespace Xpress_backend_V2.Controllers
                     OldStatusId = null,
                     NewStatusId = createdTravelRequest.CurrentStatusId,
                     ChangeDescription = "New travel request created.",
+                    ActionDate = DateTime.UtcNow,
                     Timestamp = createdTravelRequest.CreatedAt
                 };
                 await _auditLogService.CreateAuditLogAsync(auditLog);
+                await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLog);
 
                 var responseDto = _mapper.Map<TravelRequestResponseDTO>(createdTravelRequest);
 

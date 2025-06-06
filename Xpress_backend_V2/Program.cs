@@ -1,15 +1,20 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
+using Xpress_backend_V2.Models.Configuration;
 using Xpress_backend_V2.Repository;
 using Xpress_backend_V2.Services;
 using Xpress_backend_V2.Services.Interface;
 
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.Configure<ApplicationSettings>(builder.Configuration.GetSection("ApplicationSettings"));
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -26,7 +31,6 @@ builder.Services.AddScoped<IRMTServices, RMTRepository>();
 builder.Services.AddScoped<ITravelModeServices, TravelModeRepository>();
 builder.Services.AddScoped<IAirlineServices, AirlineRepository>();
 builder.Services.AddScoped<IRequestStatusServices, RequestStatusRepository>();
-builder.Services.AddScoped<INotificationServices, NotificationRepository>();
 builder.Services.AddScoped<IUserNotificationServices, UserNotificationRepository>();
 builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
 builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
@@ -36,7 +40,10 @@ builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
 builder.Services.AddScoped<ICalendarTravelRequestRepository,CalendarTravelRequestRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 
+builder.Services.AddScoped<IAuditLogHandlerService, AuditLogHandlerService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 
