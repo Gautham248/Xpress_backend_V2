@@ -206,7 +206,151 @@ namespace Xpress_backend_V2.Controllers
                 _logger.LogError(ex, "An unexpected error occurred while creating travel request for UserID {UserId}.", travelRequestCreateDto.UserId);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
             }
-        } // Travel Request APIs
+        }
+
+        //UPDATE TRAVEL REQEUEST ( +AUDIT LOG ENTRY)
+        [HttpPut("update/{requestId}")]
+        [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateTravelRequest(string requestId, [FromBody] TravelRequestCreateDTO travelRequestUpdateDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                // Check if the travel request exists
+                var existingTravelRequest = await _travelRequestService.GetTravelRequestByIdAsync(requestId);
+                if (existingTravelRequest == null)
+                {
+                    return NotFound($"Travel request with ID {requestId} not found.");
+                }
+
+                // Map the DTO to entity
+                var travelRequestEntity = _mapper.Map<TravelRequest>(travelRequestUpdateDto);
+                travelRequestEntity.RequestId = requestId; // Ensure the ID remains the same
+                travelRequestEntity.CurrentStatusId = 1; // Set status to 1 as requested
+                travelRequestEntity.IsActive = existingTravelRequest.IsActive; // Preserve existing IsActive status
+
+                // Ensure UTC for date fields
+                travelRequestEntity.OutboundDepartureDate = EnsureUtc(travelRequestUpdateDto.OutboundDepartureDate);
+                travelRequestEntity.OutboundArrivalDate = EnsureUtc(travelRequestUpdateDto.OutboundArrivalDate);
+                travelRequestEntity.ReturnDepartureDate = EnsureUtc(travelRequestUpdateDto.ReturnDepartureDate);
+                travelRequestEntity.ReturnArrivalDate = EnsureUtc(travelRequestUpdateDto.ReturnArrivalDate);
+
+                // Validation for date fields
+                if (travelRequestEntity.OutboundArrivalDate <= travelRequestEntity.OutboundDepartureDate)
+                {
+                    ModelState.AddModelError(nameof(travelRequestUpdateDto.OutboundArrivalDate), "Outbound arrival date must be after outbound departure date.");
+                }
+
+                if (travelRequestEntity.IsRoundTrip)
+                {
+                    if (!travelRequestEntity.ReturnDepartureDate.HasValue || !travelRequestEntity.ReturnArrivalDate.HasValue)
+                    {
+                        ModelState.AddModelError(nameof(travelRequestUpdateDto.IsRoundTrip), "Return departure and arrival dates are required for round trips.");
+                    }
+                    else
+                    {
+                        if (travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate)
+                        {
+                            ModelState.AddModelError(nameof(travelRequestUpdateDto.ReturnDepartureDate), "Return departure date must be after outbound arrival date.");
+                        }
+                        if (travelRequestEntity.ReturnArrivalDate.Value <= travelRequestEntity.ReturnDepartureDate.Value)
+                        {
+                            ModelState.AddModelError(nameof(travelRequestUpdateDto.ReturnArrivalDate), "Return arrival date must be after return departure date.");
+                        }
+                    }
+                }
+                else
+                {
+                    travelRequestEntity.ReturnDepartureDate = null;
+                    travelRequestEntity.ReturnArrivalDate = null;
+                }
+
+                // Additional validation for pickup/drop-off fields
+                if (travelRequestEntity.IsPickUpRequired && string.IsNullOrWhiteSpace(travelRequestEntity.PickUpPlace))
+                {
+                    ModelState.AddModelError(nameof(travelRequestUpdateDto.PickUpPlace), "Pick-up place is required when pick-up is requested.");
+                }
+
+                if (travelRequestEntity.IsDropOffRequired && string.IsNullOrWhiteSpace(travelRequestEntity.DropOffPlace))
+                {
+                    ModelState.AddModelError(nameof(travelRequestUpdateDto.DropOffPlace), "Drop-off place is required when drop-off is requested.");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                // Update the travel request
+                TravelRequest updatedTravelRequest = await _travelRequestService.UpdateTravelRequestAsync(travelRequestEntity);
+
+                // Create audit log entry
+                var auditLog = new AuditLog
+                {
+                    RequestId = updatedTravelRequest.RequestId,
+                    UserId = updatedTravelRequest.UserId,
+                    ActionType = "REQUEST_MODIFIED",
+                    OldStatusId = existingTravelRequest.CurrentStatusId,
+                    NewStatusId = updatedTravelRequest.CurrentStatusId,
+                    ChangeDescription = "Travel request modified.",
+                    Timestamp = DateTime.UtcNow
+                };
+                await _auditLogService.CreateAuditLogAsync(auditLog);
+
+                // Map to response DTO
+                var responseDto = _mapper.Map<TravelRequestResponseDTO>(updatedTravelRequest);
+
+                return Ok(responseDto);
+            }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogError(dbEx, "Database update error occurred while updating travel request ID {RequestId}. Check foreign key constraints.", requestId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "A database error occurred. Ensure all referenced IDs (UserId, TravelModeId, ProjectCode) are valid.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unexpected error occurred while updating travel request ID {RequestId}.", requestId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
+            }
+        }
+
+        [HttpGet("{requestId}")]
+        [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetTravelRequestById(string requestId)
+        {
+            try
+            {
+                _logger.LogInformation("Fetching travel request with ID {RequestId}.", requestId);
+
+                var travelRequest = await _travelRequestService.GetTravelRequestByIdAsync(requestId);
+                if (travelRequest == null)
+                {
+                    _logger.LogWarning("Travel request with ID {RequestId} not found.", requestId);
+                    return NotFound($"Travel request with ID {requestId} not found.");
+                }
+
+                var responseDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
+
+                _logger.LogInformation("Successfully fetched travel request with ID {RequestId}.", requestId);
+                return Ok(responseDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unexpected error occurred while fetching travel request with ID {RequestId}.", requestId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
+            }
+        }
+
+
         [HttpGet("travelrequests")]
         public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetTravelRequests()
         {
