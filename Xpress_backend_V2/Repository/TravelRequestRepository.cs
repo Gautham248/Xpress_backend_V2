@@ -107,7 +107,8 @@ namespace Xpress_backend_V2.Repository
                             SourcePlace = tr.SourcePlace,
                             SourceCountry = tr.SourceCountry,
                             DestinationPlace = tr.DestinationPlace,
-                            DestinationCountry = tr.DestinationCountry
+                            DestinationCountry = tr.DestinationCountry,
+                            PhoneNumber = user.PhoneNumber,
                         };
 
             return await query.ToListAsync();

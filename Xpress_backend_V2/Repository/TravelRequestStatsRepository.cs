@@ -54,15 +54,15 @@ namespace Xpress_backend_V2.Repository
                                    tr.CurrentStatus != null &&
                                    statusNames.Contains(tr.CurrentStatus.StatusName));
         }
-
         public async Task<TravelLegCountsDto> GetTodaysTravelLegCountsAsync()
         {
-            var today = DateTime.UtcNow.Date;
+            // Get today's date in UTC
+            var todayUtc = DateTime.UtcNow.Date;
 
             var outboundDepartures = await _context.TravelRequests
                 .Include(tr => tr.CurrentStatus)
                 .CountAsync(tr => tr.IsActive &&
-                                   tr.OutboundDepartureDate.Date == today &&
+                                   tr.OutboundDepartureDate.Date == todayUtc &&
                                    tr.CurrentStatus != null &&
                                    _calendarValidStatuses.Contains(tr.CurrentStatus.StatusName));
 
@@ -70,7 +70,7 @@ namespace Xpress_backend_V2.Repository
                 .Include(tr => tr.CurrentStatus)
                 .CountAsync(tr => tr.IsActive &&
                                    tr.ReturnArrivalDate.HasValue &&
-                                   tr.ReturnArrivalDate.Value.Date == today &&
+                                   tr.ReturnArrivalDate.Value.Date == todayUtc &&
                                    tr.CurrentStatus != null &&
                                    _calendarValidStatuses.Contains(tr.CurrentStatus.StatusName));
 
@@ -78,8 +78,6 @@ namespace Xpress_backend_V2.Repository
             {
                 TodayOutboundDepartureCount = outboundDepartures,
                 TodayReturnArrivalCount = returnArrivals,
-                // OutboundDepartureStatusCounts will be null here
-                // ReturnArrivalStatusCounts will be null here
             };
         }
         public async Task<int> GetSlaBreachedRequestsCountAsync(IEnumerable<string> statusNames, TimeSpan slaThreshold)

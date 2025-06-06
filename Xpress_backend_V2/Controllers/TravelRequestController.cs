@@ -369,6 +369,40 @@ namespace Xpress_backend_V2.Controllers
 
 
         // Travel Request Details APIs
+        // Get travel request by id
+        [HttpGet("{requestId}")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> GetTravelRequestById(string requestId)
+        {
+            var localResponse = new APIResponse();
+
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                localResponse.IsSuccess = false;
+                localResponse.StatusCode = HttpStatusCode.BadRequest;
+                localResponse.ErrorMessages.Add("Travel Request ID cannot be empty.");
+                return BadRequest(localResponse);
+            }
+
+            var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
+
+            if (travelRequest == null)
+            {
+                localResponse.IsSuccess = false;
+                localResponse.StatusCode = HttpStatusCode.NotFound;
+                localResponse.ErrorMessages.Add($"Travel request with ID '{requestId}' not found.");
+                return NotFound(localResponse);
+            }
+
+            var responseDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
+
+            localResponse.IsSuccess = true;
+            localResponse.StatusCode = HttpStatusCode.OK;
+            localResponse.Result = responseDto;
+            return Ok(localResponse);
+        }
 
         // Travel InfoBanner API
         [HttpGet("infobanner/{requestId}")]

@@ -12,5 +12,6 @@
         public string SourceCountry { get; set; }
         public string DestinationPlace { get; set; }
         public string DestinationCountry { get; set; }
+        public string PhoneNumber { get; set; }
     }
 }
