@@ -416,5 +416,172 @@ namespace Xpress_backend_V2.Controllers
             response.Result = $"Ticket option {optionId} deleted successfully.";
             return Ok(response);
         }
+
+        //// Bulk Create Ticket Options
+        //[HttpPost("bulk")]
+        //[ProducesResponseType(StatusCodes.Status201Created, Type = typeof(APIResponse))]
+        //[ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
+        //[ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
+        //[ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(APIResponse))]
+        //public async Task<ActionResult<APIResponse>> BulkCreateTicketOptions(string requestId, [FromBody] BulkCreateTicketOptionsDTO bulkCreateDto)
+        //{
+        //    var response = new APIResponse();
+
+        //    if (!ModelState.IsValid)
+        //    {
+        //        response.IsSuccess = false;
+        //        response.StatusCode = HttpStatusCode.BadRequest;
+        //        response.ErrorMessages = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList();
+        //        return BadRequest(response);
+        //    }
+
+        //    // Validate that we have options to create
+        //    if (bulkCreateDto.TicketOptions == null || !bulkCreateDto.TicketOptions.Any())
+        //    {
+        //        response.IsSuccess = false;
+        //        response.StatusCode = HttpStatusCode.BadRequest;
+        //        response.ErrorMessages.Add("At least one ticket option must be provided.");
+        //        return BadRequest(response);
+        //    }
+
+        //    // Check if travel request exists
+        //    var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
+        //    if (travelRequest == null)
+        //    {
+        //        response.IsSuccess = false;
+        //        response.StatusCode = HttpStatusCode.NotFound;
+        //        response.ErrorMessages.Add($"Travel request with ID '{requestId}' not found.");
+        //        return NotFound(response);
+        //    }
+
+        //    // Validate travel request status
+        //    if (travelRequest.CurrentStatusId != VERIFIED_STATUS_ID && travelRequest.CurrentStatusId != OPTIONS_LISTED_STATUS_ID)
+        //    {
+        //        response.IsSuccess = false;
+        //        response.StatusCode = HttpStatusCode.Conflict;
+        //        response.ErrorMessages.Add($"Travel request must be in 'Verified' (Status ID: {VERIFIED_STATUS_ID}) or 'OptionsListed' (Status ID: {OPTIONS_LISTED_STATUS_ID}) state to add ticket options. Current status ID: {travelRequest.CurrentStatusId}.");
+        //        return Conflict(response);
+        //    }
+
+        //    // Validate individual options
+        //    var validationErrors = new List<string>();
+        //    for (int i = 0; i < bulkCreateDto.TicketOptions.Count; i++)
+        //    {
+        //        var option = bulkCreateDto.TicketOptions[i];
+        //        if (string.IsNullOrWhiteSpace(option.OptionDescription))
+        //        {
+        //            validationErrors.Add($"Option {i + 1}: Description is required.");
+        //        }
+        //        if (option.CreatedByUserId <= 0)
+        //        {
+        //            validationErrors.Add($"Option {i + 1}: Valid CreatedByUserId is required.");
+        //        }
+        //    }
+
+        //    if (validationErrors.Any())
+        //    {
+        //        response.IsSuccess = false;
+        //        response.StatusCode = HttpStatusCode.BadRequest;
+        //        response.ErrorMessages = validationErrors;
+        //        return BadRequest(response);
+        //    }
+
+        //    try
+        //    {
+        //        var createdOptions = new List<TicketOption>();
+        //        var currentTime = DateTime.UtcNow;
+
+        //        // Create all ticket options
+        //        foreach (var optionDto in bulkCreateDto.TicketOptions)
+        //        {
+        //            var ticketOption = new TicketOption
+        //            {
+        //                RequestId = requestId,
+        //                CreatedByUserId = optionDto.CreatedByUserId,
+        //                OptionDescription = optionDto.OptionDescription,
+        //                CreatedAt = currentTime,
+        //                IsSelected = false
+        //            };
+
+        //            await _ticketOptionService.AddAsync(ticketOption);
+        //            createdOptions.Add(ticketOption);
+        //        }
+
+        //        // Update travel request status if needed
+        //        var oldStatusId = travelRequest.CurrentStatusId;
+        //        bool statusActuallyChanged = false;
+
+        //        if (travelRequest.CurrentStatusId == VERIFIED_STATUS_ID)
+        //        {
+        //            travelRequest.CurrentStatusId = OPTIONS_LISTED_STATUS_ID;
+        //            travelRequest.UpdatedAt = currentTime;
+        //            await _travelRequestService.UpdateAsync(travelRequest);
+        //            statusActuallyChanged = true;
+        //        }
+
+        //        // Create audit logs
+        //        var currentActingUserId = bulkCreateDto.CreatedByUserId;
+
+        //        // Audit log for bulk creation
+        //        //var auditLogBulkCreation = new AuditLog
+        //        //{
+        //        //    RequestId = requestId,
+        //        //    UserId = currentActingUserId,
+        //        //    ActionType = "TICKET_OPTIONS_BULK_CREATED",
+        //        //    ChangeDescription = $"Bulk created {createdOptions.Count} ticket options.",
+        //        //    Comments = bulkCreateDto.Comments
+        //        //};
+        //        //await _auditLogService.AddAsync(auditLogBulkCreation);
+
+        //        // Individual audit logs for each option (if needed for detailed tracking)
+        //        foreach (var option in createdOptions)
+        //        {
+        //            var auditLogOption = new AuditLog
+        //            {
+        //                RequestId = requestId,
+        //                UserId = currentActingUserId,
+        //                ActionType = "TICKET_OPTION_CREATED",
+        //                ChangeDescription = $"Ticket option {option.OptionId} ('{option.OptionDescription}') created via bulk upload.",
+        //            };
+        //            await _auditLogService.AddAsync(auditLogOption);
+        //        }
+
+        //        // Audit log for status change if it occurred
+        //        if (statusActuallyChanged)
+        //        {
+        //            var auditLogStatusChange = new AuditLog
+        //            {
+        //                RequestId = requestId,
+        //                UserId = currentActingUserId,
+        //                ActionType = "STATUS_UPDATED_OPTIONS_LISTED",
+        //                OldStatusId = oldStatusId,
+        //                NewStatusId = travelRequest.CurrentStatusId,
+        //                ChangeDescription = $"Status changed to 'OptionsListed' after bulk ticket options creation."
+        //            };
+        //            await _auditLogService.AddAsync(auditLogStatusChange);
+        //        }
+
+        //        // Prepare response
+        //        var resultDtos = _mapper.Map<IEnumerable<TicketOptionResponseDTO>>(createdOptions);
+        //        response.IsSuccess = true;
+        //        response.Result = new
+        //        {
+        //            Message = $"Successfully created {createdOptions.Count} ticket options.",
+        //            CreatedCount = createdOptions.Count,
+        //            TicketOptions = resultDtos,
+        //            StatusChanged = statusActuallyChanged,
+        //            NewStatus = statusActuallyChanged ? "OptionsListed" : null
+        //        };
+        //        response.StatusCode = HttpStatusCode.Created;
+        //        return CreatedAtAction(nameof(GetTicketOptionsByRequest), new { requestId = requestId }, response);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        response.IsSuccess = false;
+        //        response.StatusCode = HttpStatusCode.InternalServerError;
+        //        response.ErrorMessages.Add($"An error occurred while creating ticket options: {ex.Message}");
+        //        return StatusCode((int)HttpStatusCode.InternalServerError, response);
+        //    }
+        //}
     }
 }
