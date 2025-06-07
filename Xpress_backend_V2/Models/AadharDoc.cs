@@ -5,7 +5,7 @@
         public int AadharId { get; set; } // PK
         public int UserId { get; set; } // FK → Users
         public string AadharName { get; set; }
-        public string? DocumentNumber { get; set; }
+        public string? AadharNumber { get; set; }
         public string DocumentPath { get; set; }
         public int CreatedBy { get; set; } // FK → Users
         public DateTime UploadedAt { get; set; }
