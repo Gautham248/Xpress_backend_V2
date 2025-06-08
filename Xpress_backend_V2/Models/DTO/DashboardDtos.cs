@@ -24,9 +24,6 @@
         }
 
 
-        // =================================================================
-        // API 2: Expense Overview
-        // =================================================================
 
         /// <summary>
         /// Contains the complete response for the expense overview API.
@@ -51,10 +48,6 @@
             public decimal? EstimatedCost { get; set; }
         }
 
-
-        // =================================================================
-        // API 3: Trip Details Overview
-        // =================================================================
 
         /// <summary>
         /// Contains the complete response for the trip details overview API.

@@ -16,7 +16,7 @@ namespace Xpress_backend_V2.Repository
 
         public async Task<IEnumerable<TravelAgencyStatDto>> GetTravelAgencyStatsAsync(DateTime startDate, DateTime endDate)
         {
-            // We adjust the endDate to include the whole day.
+            
             var adjustedEndDate = endDate.Date.AddDays(1).AddTicks(-1);
 
             var stats = await _context.TravelRequests
@@ -35,10 +35,10 @@ namespace Xpress_backend_V2.Repository
                     TravelAgencyName = group.Key.TravelAgencyName,
                     TravelType = group.Key.IsInternational ? "International" : "Domestic",
                     RequestCount = group.Count(),
-                    // We use .Value because TravelAgencyExpense is nullable (decimal?). The Where clause above ensures it's safe.
+              
                     TotalExpense = group.Sum(tr => tr.TravelAgencyExpense.Value)
                 })
-                .OrderBy(s => s.TravelAgencyName).ThenBy(s => s.TravelType) // Optional: for consistent ordering
+                .OrderBy(s => s.TravelAgencyName).ThenBy(s => s.TravelType) 
                 .ToListAsync();
 
             return stats;

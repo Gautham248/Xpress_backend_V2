@@ -25,7 +25,9 @@ builder.Services.AddScoped<ITicketOptionServices, TicketOptionRepository>();
 builder.Services.AddScoped<IUserServices, UserRepository>();
 builder.Services.AddScoped<IRMTServices, RMTRepository>();
 builder.Services.AddScoped<ITravelModeServices, TravelModeRepository>();
-builder.Services.AddScoped<IAirlineServices, AirlineRepository>();
+
+builder.Services.AddScoped<IAirlineReportRepository, AirlineReportRepository>();
+
 builder.Services.AddScoped<IRequestStatusServices, RequestStatusRepository>();
 builder.Services.AddScoped<INotificationServices, NotificationRepository>();
 builder.Services.AddScoped<IUserNotificationServices, UserNotificationRepository>();
@@ -39,7 +41,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITravelRequestStatsRepository, TravelRequestStatsRepository>();
 builder.Services.AddScoped<IDocumentService, DocumentRepository>();
-
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 

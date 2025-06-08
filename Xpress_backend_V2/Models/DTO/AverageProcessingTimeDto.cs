@@ -2,22 +2,30 @@
 {
     public class AverageProcessingTimeDto
     {
-        /// <summary>
-        /// The calculated average time as a TimeSpan object.
-        /// Useful for machine-to-machine communication.
-        /// </summary>
-        public TimeSpan AverageTime { get; set; }
+       
+        public double AverageDays { get; set; }
 
         /// <summary>
-        /// A human-readable, formatted string of the average time.
-        /// e.g., "2 Days, 5 Hours, 32 Minutes"
+        /// The average time in total hours.
         /// </summary>
-        public string FormattedAverageTime { get; set; }
+        public double AverageHours { get; set; }
 
         /// <summary>
-        /// The total number of requests included in the calculation.
+        /// The average time in total minutes.
+        /// </summary>
+        public double AverageMinutes { get; set; }
+
+        /// <summary>
+        /// A human-readable formatted string representing the average time.
+        /// Example: "3 Days, 4 Hours, 32 Minutes"
+        /// </summary>
+        public string ReadableFormat { get; set; }
+
+        /// <summary>
+        /// The number of requests included in this calculation.
         /// </summary>
         public int TotalRequestsCalculated { get; set; }
+
     }
 }
 

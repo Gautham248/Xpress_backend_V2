@@ -25,13 +25,12 @@ namespace Xpress_backend_V2.Repository
                 .Where(p => p.IsActive && p.User.IsActive && p.ExpiryDate < date90Days)
                 .ToListAsync();
 
-            // --- MODIFIED: Counts are now mutually exclusive ---
+         
             var expiredCount = allRelevantPassports.Count(p => p.ExpiryDate < endDate);
             var expiresIn45DaysCount = allRelevantPassports.Count(p => p.ExpiryDate >= endDate && p.ExpiryDate <= date45Days);
-            // This is the key change: it now counts items expiring *after* the 45-day window.
+            
             var expiresIn90DaysCount = allRelevantPassports.Count(p => p.ExpiryDate > date45Days && p.ExpiryDate <= date90Days);
-            // --- END MODIFICATION ---
-
+           
             var passportDetails = allRelevantPassports.Select(p => new PassportStatusDto
             {
                 EmployeeName = p.User.EmployeeName,
@@ -60,12 +59,12 @@ namespace Xpress_backend_V2.Repository
                 .Where(v => v.IsActive && v.User.IsActive && v.ExpiryDate < date90Days)
                 .ToListAsync();
 
-            // --- MODIFIED: Counts are now mutually exclusive ---
+            
             var expiredCount = allRelevantVisas.Count(v => v.ExpiryDate < endDate);
             var expiresIn45DaysCount = allRelevantVisas.Count(v => v.ExpiryDate >= endDate && v.ExpiryDate <= date45Days);
-            // This is the key change: it now counts items expiring *after* the 45-day window.
+           
             var expiresIn90DaysCount = allRelevantVisas.Count(v => v.ExpiryDate > date45Days && v.ExpiryDate <= date90Days);
-            // --- END MODIFICATION ---
+          
 
             var visaDetails = allRelevantVisas.Select(v => new VisaStatusDto
             {

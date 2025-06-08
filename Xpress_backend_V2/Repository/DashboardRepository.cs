@@ -1,7 +1,9 @@
-﻿using static Xpress_backend_V2.Models.DTO.DashboardDtos;
-using Xpress_backend_V2.Interface;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using System.Threading.Tasks;
 using Xpress_backend_V2.Data;
-using Microsoft.EntityFrameworkCore;
+using Xpress_backend_V2.Interface;
+using static Xpress_backend_V2.Models.DTO.DashboardDtos;
 
 namespace Xpress_backend_V2.Repository
 {
@@ -14,23 +16,25 @@ namespace Xpress_backend_V2.Repository
             _context = context;
         }
 
-        // API 1 Implementation
+        // =================================================================================
+        // API 1 Implementation (No changes needed here)
+        // =================================================================================
         public async Task<RequestStatusOverviewDto> GetRequestStatusOverviewAsync(DateTime startDate, DateTime endDate)
         {
             // Set up the universal date filter. This is reusable and efficient.
             var baseQuery = _context.TravelRequests
                 .Where(tr => tr.CreatedAt.Date >= startDate.Date && tr.CreatedAt.Date <= endDate.Date);
 
-            // 1. Calculate the counts efficiently
+            // 1. Calculate summary counts efficiently
             var totalCount = await baseQuery.CountAsync();
             var rejectedCount = await baseQuery.CountAsync(tr => tr.CurrentStatus.StatusName == "Rejected");
 
             var confirmedOrOtherStatuses = new[] { "Confirmed", "InTransit", "Returned", "Closed" };
             var confirmedOrOtherCount = await baseQuery.CountAsync(tr => confirmedOrOtherStatuses.Contains(tr.CurrentStatus.StatusName));
 
-            // 2. Fetch the detailed list for the response
+            // 2. Fetch the detailed list
             var requestsList = await baseQuery
-                .Include(tr => tr.CurrentStatus) // Include related data
+                .Include(tr => tr.CurrentStatus)
                 .Select(tr => new RequestStatusItemDto
                 {
                     ID = tr.RequestId,
@@ -50,7 +54,9 @@ namespace Xpress_backend_V2.Repository
             };
         }
 
-        // API 2 Implementation
+        // =================================================================================
+        // API 2 Implementation (No changes needed here)
+        // =================================================================================
         public async Task<ExpenseOverviewDto> GetExpenseOverviewAsync(DateTime startDate, DateTime endDate)
         {
             var baseQuery = _context.TravelRequests
@@ -84,33 +90,38 @@ namespace Xpress_backend_V2.Repository
             };
         }
 
-        // API 3 Implementation
+        // =================================================================================
+        // API 3 Implementation (This method has been corrected)
+        // =================================================================================
         public async Task<TripDetailsOverviewDto> GetTripDetailsOverviewAsync(DateTime startDate, DateTime endDate)
         {
-            // These are the only statuses we care about for this API, for both list and counts
             var validTripStatuses = new[] { "Confirmed", "InTransit", "Returned", "Closed" };
 
-            // Apply both the date filter AND the status filter to the base query
+            // Base query to filter requests by date and valid status
             var filteredQuery = _context.TravelRequests
                 .Where(tr => tr.CreatedAt.Date >= startDate.Date && tr.CreatedAt.Date <= endDate.Date)
                 .Where(tr => validTripStatuses.Contains(tr.CurrentStatus.StatusName));
 
-            // 1. Calculate counts based on the filtered query
+            // 1. Calculate summary counts efficiently
             var totalTripCount = await filteredQuery.CountAsync();
             var domesticTripCount = await filteredQuery.CountAsync(tr => !tr.IsInternational);
             var internationalTripCount = await filteredQuery.CountAsync(tr => tr.IsInternational);
 
-            // 2. Fetch the detailed list from the same filtered query
+            // 2. Fetch the detailed list with the correct includes and projection
             var tripsList = await filteredQuery
                 .Include(tr => tr.CurrentStatus)
-                .Include(tr => tr.Airline) // Needed for Airline Name
+                // Correctly include the collection of Airline bookings
+                .Include(tr => tr.BookedAirlines)
                 .Select(tr => new TripDetailItemDto
                 {
                     ID = tr.RequestId,
                     RequestDate = tr.CreatedAt,
                     Status = tr.CurrentStatus.StatusName,
                     TravelType = tr.IsInternational ? "International" : "Domestic",
-                    Airline = tr.Airline != null ? tr.Airline.AirlineName : "N/A", // Safely access related data
+                    // Safely join the names of all booked airlines into a single comma-separated string
+                    Airline = tr.BookedAirlines.Any()
+                              ? string.Join(", ", tr.BookedAirlines.Select(a => a.AirlineName))
+                              : "N/A",
                     TravelAgency = tr.TravelAgencyName ?? "N/A"
                 })
                 .ToListAsync();
@@ -125,5 +136,4 @@ namespace Xpress_backend_V2.Repository
             };
         }
     }
-
 }

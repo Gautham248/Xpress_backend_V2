@@ -8,11 +8,11 @@ using Xpress_backend_V2.Models.DTO;
 namespace Xpress_backend_V2.Controllers
 {
     [ApiController]
-    [Route("api/calendar")] // Using a clear base route like "api/calendar"
+    [Route("api/calendar")]
     public class CalendarController : ControllerBase
     {
         private readonly ICalendarTravelRequestRepository _calendarRepository;
-        private const int MaxDateRangeDays = 90; // Consistent date range limit
+        private const int MaxDateRangeDays = 90; 
         protected APIResponse _response;
 
         public CalendarController(ICalendarTravelRequestRepository calendarRepository)
@@ -21,7 +21,7 @@ namespace Xpress_backend_V2.Controllers
             _response = new APIResponse();
         }
 
-        [HttpGet("events")] // e.g., GET api/calendar/events
+        [HttpGet("events")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<APIResponse>> GetCalendarEvents()
@@ -46,11 +46,11 @@ namespace Xpress_backend_V2.Controllers
             }
         }
 
-        /// <summary>
+       
         /// Gets calendar travel request events within a specified date range.
         /// Checks OutboundDepartureDate and ReturnArrivalDate.
-        /// </summary>
-        [HttpGet("events/range")] // e.g., GET api/calendar/events/range?startDate=...&endDate=...
+        
+        [HttpGet("events/range")] 
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -106,7 +106,7 @@ namespace Xpress_backend_V2.Controllers
         /// Gets calendar travel request events within a specified date range using an optimized query.
         /// Checks OutboundDepartureDate and ReturnArrivalDate.
         /// </summary>
-        [HttpGet("events/range-optimized")] // e.g., GET api/calendar/events/range-optimized?startDate=...&endDate=...
+        [HttpGet("events/range-optimized")] 
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
