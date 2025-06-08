@@ -20,21 +20,21 @@ namespace Xpress_backend_V2.Repository
         private IQueryable<TravelRequest> GetBaseTravelRequestEntitiesQuery()
         {
             return _context.TravelRequests
-                .Include(tr => tr.User) // To get EmployeeName
-                .Include(tr => tr.CurrentStatus) // To get CurrentStatusName (now StatusName)
+                .Include(tr => tr.User) 
+                .Include(tr => tr.CurrentStatus) 
                 .Where(tr => tr.IsActive &&
-                              tr.CurrentStatus != null && // Ensure CurrentStatus is loaded
-                              _validStatuses.Contains(tr.CurrentStatus.StatusName)); // Use StatusName from your RequestStatus model
+                              tr.CurrentStatus != null && 
+                              _validStatuses.Contains(tr.CurrentStatus.StatusName));
         }
 
-        // Helper to convert TravelRequest to DTO
+     
         private CalendarTravelRequestDTO MapToDto(TravelRequest tr)
         {
             if (tr == null) return null;
             return new CalendarTravelRequestDTO
             {
                 RequestId = tr.RequestId,
-                EmployeeName = tr.User?.EmployeeName, // Null conditional for safety
+                EmployeeName = tr.User?.EmployeeName, 
                 OutboundDepartureDate = tr.OutboundDepartureDate,
                 OutboundArrivalDate = tr.OutboundArrivalDate,
                 ReturnDepartureDate = tr.ReturnDepartureDate,
@@ -43,7 +43,7 @@ namespace Xpress_backend_V2.Repository
                 SourceCountry = tr.SourceCountry,
                 DestinationPlace = tr.DestinationPlace,
                 DestinationCountry = tr.DestinationCountry,
-                CurrentStatusName = tr.CurrentStatus?.StatusName // Use StatusName and null conditional
+                CurrentStatusName = tr.CurrentStatus?.StatusName 
             };
         }
 
@@ -55,14 +55,14 @@ namespace Xpress_backend_V2.Repository
             return travelRequests.Select(MapToDto);
         }
 
-        // UPDATED: Only includes Outbound Departures and Return Arrivals
+       
         public async Task<IEnumerable<CalendarTravelRequestDTO>> GetCalendarEventsByRangeAsync(DateTime startDate, DateTime endDate)
         {
             var query = GetBaseTravelRequestEntitiesQuery()
                 .Where(tr =>
-                    // Only Outbound Departures in the date range
+                   
                     (tr.OutboundDepartureDate.Date >= startDate.Date && tr.OutboundDepartureDate.Date <= endDate.Date) ||
-                    // Only Return Arrivals in the date range (not outbound arrivals)
+                   
                     (tr.ReturnArrivalDate.HasValue && tr.ReturnArrivalDate.Value.Date >= startDate.Date && tr.ReturnArrivalDate.Value.Date <= endDate.Date)
                 );
 
@@ -70,14 +70,13 @@ namespace Xpress_backend_V2.Repository
             return travelRequests.Select(MapToDto);
         }
 
-        // UPDATED: Only includes Outbound Departures and Return Arrivals
+      
         public async Task<IEnumerable<CalendarTravelRequestDTO>> GetCalendarEventsByRangeOptimizedAsync(DateTime startDate, DateTime endDate)
         {
             var statusList = string.Join(",", _validStatuses.Select(s => $"'{s}'"));
             var startDateStr = startDate.ToString("yyyy-MM-dd");
             var endDateStr = endDate.ToString("yyyy-MM-dd");
 
-            // UPDATED SQL: Only Outbound Departures and Return Arrivals
             var sql = $@"
                 SELECT 
                     tr.RequestId, 
@@ -136,15 +135,14 @@ namespace Xpress_backend_V2.Repository
             return travelRequests.Select(MapToDto);
         }
 
-        // OPTIONAL: Add a method that specifically gets events that should appear on a specific date
-        // This will help you verify what should show on the calendar for any given date
+       
         public async Task<IEnumerable<CalendarTravelRequestDTO>> GetCalendarEventsForSpecificDateAsync(DateTime date)
         {
             var query = GetBaseTravelRequestEntitiesQuery()
                 .Where(tr =>
-                    // Outbound Departures on this date
+                   
                     tr.OutboundDepartureDate.Date == date.Date ||
-                    // Return Arrivals on this date
+                  
                     (tr.ReturnArrivalDate.HasValue && tr.ReturnArrivalDate.Value.Date == date.Date)
                 );
 

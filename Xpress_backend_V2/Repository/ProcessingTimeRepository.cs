@@ -1,62 +1,100 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using Xpress_backend_V2.Data; // Assuming your DbContext is here
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
-using Xpress_backend_V2.Models;
+using Xpress_backend_V2.Models.DTO;
 
 namespace Xpress_backend_V2.Repositories
 {
+
     public class ProcessingTimeRepository : IProcessingTimeRepository
     {
         private readonly ApiDbContext _context;
 
-        private const string StartStatus = "PendingReview";
-        private const string EndStatus = "TicketDispatched";
+       
+        private const string StartStatusName = "PendingReview";
+        private const string EndStatusName = "TicketDispatched";
 
         public ProcessingTimeRepository(ApiDbContext context)
         {
             _context = context;
         }
 
-        public async Task<(TimeSpan averageTime, int requestCount)> GetAverageProcessingTimeAsync()
+        public async Task<AverageProcessingTimeDto?> GetAverageReviewToDispatchTimeAsync()
         {
-            var relevantLogs = _context.AuditLogs
-                .Include(log => log.NewStatus)
-                .Where(log => log.NewStatus != null &&
-                               (log.NewStatus.StatusName == StartStatus || log.NewStatus.StatusName == EndStatus));
+           
+            var startStatusId = await _context.RequestStatuses
+                .Where(s => s.StatusName == StartStatusName)
+                .Select(s => s.StatusId)
+                .FirstOrDefaultAsync();
 
-            var processingDurations = await relevantLogs
+            var endStatusId = await _context.RequestStatuses
+                .Where(s => s.StatusName == EndStatusName)
+                .Select(s => s.StatusId)
+                .FirstOrDefaultAsync();
+
+          
+            if (startStatusId == 0 || endStatusId == 0)
+            {
+                return null; 
+            }
+
+          
+            var requestDurations = await _context.AuditLogs
+               
+                .Where(log => log.NewStatusId == startStatusId || log.NewStatusId == endStatusId)
+                // Group all relevant logs by their RequestId
                 .GroupBy(log => log.RequestId)
-                // START OF THE FIX
-                .Select(group => new {
-                    // This new structure is translatable to SQL.
-                    // It finds the first log with the start status and selects its Timestamp into a nullable DateTime.
-                    // If no log is found, FirstOrDefault() returns the default value for a nullable DateTime, which is null.
-                    StartTime = group.Where(l => l.NewStatus.StatusName == StartStatus)
-                                   .Select(l => (DateTime?)l.Timestamp)
-                                   .FirstOrDefault(),
+           
+                .Select(group => new
+                {
+                    //  earliest timestamp for the 'PendingReview' status in the group
+                    StartTime = group
+                        .Where(g => g.NewStatusId == startStatusId)
+                        .OrderBy(g => g.Timestamp) // Important: get the first occurrence
+                        .Select(g => (DateTime?)g.Timestamp) // Cast to nullable DateTime
+                        .FirstOrDefault(),
 
-                    // Same logic for the end status.
-                    EndTime = group.Where(l => l.NewStatus.StatusName == EndStatus)
-                                 .Select(l => (DateTime?)l.Timestamp)
-                                 .FirstOrDefault()
+                    //  earliest timestamp for the 'TicketDispatched' status in the group
+                    EndTime = group
+                        .Where(g => g.NewStatusId == endStatusId)
+                        .OrderBy(g => g.Timestamp) // Important: get the first occurrence
+                        .Select(g => (DateTime?)g.Timestamp)
+                        .FirstOrDefault()
                 })
-                // END OF THE FIX
-                .Where(x => x.StartTime.HasValue && x.EndTime.HasValue)
+                
+                .Where(x => x.StartTime.HasValue && x.EndTime.HasValue && x.EndTime.Value > x.StartTime.Value)
+              
                 .Select(x => x.EndTime.Value - x.StartTime.Value)
                 .ToListAsync();
 
-            if (processingDurations.Count == 0)
+         
+            if (requestDurations == null || !requestDurations.Any())
             {
-                return (TimeSpan.Zero, 0);
+              
+                return new AverageProcessingTimeDto
+                {
+                    AverageDays = 0,
+                    AverageHours = 0,
+                    AverageMinutes = 0,
+                    ReadableFormat = "N/A - No completed requests found.",
+                    TotalRequestsCalculated = 0
+                };
             }
 
-            double averageTicks = processingDurations.Average(ts => ts.Ticks);
-            var averageTimeSpan = new TimeSpan((long)averageTicks);
+           
+            var averageTicks = requestDurations.Average(span => span.Ticks);
+            var averageTimeSpan = TimeSpan.FromTicks((long)averageTicks);
 
-            return (averageTimeSpan, processingDurations.Count);
+           
+            return new AverageProcessingTimeDto
+            {
+                AverageDays = averageTimeSpan.TotalDays,
+                AverageHours = averageTimeSpan.TotalHours,
+                AverageMinutes = averageTimeSpan.TotalMinutes,
+                ReadableFormat = $"{averageTimeSpan.Days} Days, {averageTimeSpan.Hours} Hours, {averageTimeSpan.Minutes} Minutes",
+                TotalRequestsCalculated = requestDurations.Count
+            };
         }
     }
 }

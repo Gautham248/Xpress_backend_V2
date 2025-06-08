@@ -16,7 +16,7 @@ namespace Xpress_backend_V2.Repository
 
         public async Task<IEnumerable<AirlineReportDto>> GetAirlineReportAsync(DateTime startDate, DateTime endDate)
         {
-            // Ensure the end date includes the entire day
+          
             var inclusiveEndDate = endDate.Date.AddDays(1).AddTicks(-1);
 
             var report = await _context.TravelRequests
@@ -36,7 +36,7 @@ namespace Xpress_backend_V2.Repository
                     AirlineName = g.Key.AirlineName,
                     TypeOfTravel = g.Key.IsInternational ? "International" : "Domestic",
                     TravelRequestCount = g.Count(),
-                    // Sum the TotalExpense for each group. Handle potential nulls with '?? 0'
+                    // Sum the TotalExpense for each group.
                     TotalAirlineExpense = g.Sum(tr => tr.TotalExpense ?? 0)
                 })
                 .OrderBy(dto => dto.AirlineName)

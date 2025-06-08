@@ -21,16 +21,16 @@ namespace Xpress_backend_V2.Repository
             var baseQuery = _context.TravelRequests
                 .Where(tr => tr.CreatedAt.Date >= startDate.Date && tr.CreatedAt.Date <= endDate.Date);
 
-            // 1. Calculate the counts efficiently
+           
             var totalCount = await baseQuery.CountAsync();
             var rejectedCount = await baseQuery.CountAsync(tr => tr.CurrentStatus.StatusName == "Rejected");
 
             var confirmedOrOtherStatuses = new[] { "Confirmed", "InTransit", "Returned", "Closed" };
             var confirmedOrOtherCount = await baseQuery.CountAsync(tr => confirmedOrOtherStatuses.Contains(tr.CurrentStatus.StatusName));
 
-            // 2. Fetch the detailed list for the response
+          
             var requestsList = await baseQuery
-                .Include(tr => tr.CurrentStatus) // Include related data
+                .Include(tr => tr.CurrentStatus) 
                 .Select(tr => new RequestStatusItemDto
                 {
                     ID = tr.RequestId,
@@ -87,15 +87,15 @@ namespace Xpress_backend_V2.Repository
         // API 3 Implementation
         public async Task<TripDetailsOverviewDto> GetTripDetailsOverviewAsync(DateTime startDate, DateTime endDate)
         {
-            // These are the only statuses we care about for this API, for both list and counts
+           
             var validTripStatuses = new[] { "Confirmed", "InTransit", "Returned", "Closed" };
 
-            // Apply both the date filter AND the status filter to the base query
+           
             var filteredQuery = _context.TravelRequests
                 .Where(tr => tr.CreatedAt.Date >= startDate.Date && tr.CreatedAt.Date <= endDate.Date)
                 .Where(tr => validTripStatuses.Contains(tr.CurrentStatus.StatusName));
 
-            // 1. Calculate counts based on the filtered query
+          
             var totalTripCount = await filteredQuery.CountAsync();
             var domesticTripCount = await filteredQuery.CountAsync(tr => !tr.IsInternational);
             var internationalTripCount = await filteredQuery.CountAsync(tr => tr.IsInternational);
@@ -103,7 +103,7 @@ namespace Xpress_backend_V2.Repository
             // 2. Fetch the detailed list from the same filtered query
             var tripsList = await filteredQuery
                 .Include(tr => tr.CurrentStatus)
-                .Include(tr => tr.Airline) // Needed for Airline Name
+                .Include(tr => tr.Airline) 
                 .Select(tr => new TripDetailItemDto
                 {
                     ID = tr.RequestId,
