@@ -31,7 +31,9 @@ builder.Services.AddScoped<ITicketOptionServices, TicketOptionRepository>();
 builder.Services.AddScoped<IUserServices, UserRepository>();
 builder.Services.AddScoped<IRMTServices, RMTRepository>();
 builder.Services.AddScoped<ITravelModeServices, TravelModeRepository>();
-builder.Services.AddScoped<IAirlineServices, AirlineRepository>();
+
+builder.Services.AddScoped<IAirlineReportRepository, AirlineReportRepository>();
+
 builder.Services.AddScoped<IRequestStatusServices, RequestStatusRepository>();
 builder.Services.AddScoped<IUserNotificationServices, UserNotificationRepository>();
 builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
@@ -48,6 +50,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 
 builder.Services.AddScoped<IAuditLogHandlerService, AuditLogHandlerService>();
+builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 
@@ -134,13 +137,14 @@ builder.Services.AddAuthentication(options => {
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 app.UseHttpsRedirection();
+
+
 
 // Apply CORS policy
 app.UseCors("AllowAll");

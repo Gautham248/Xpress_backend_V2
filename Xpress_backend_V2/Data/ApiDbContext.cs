@@ -26,6 +26,8 @@ namespace Xpress_backend_V2.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // This part remains unchanged
+            #region UTC Conversion and Primary Keys
             // Configure UTC conversion for all DateTime properties
             var utcConverter = new ValueConverter<DateTime, DateTime>(
                 v => v.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(v, DateTimeKind.Utc) : v.ToUniversalTime(),
@@ -35,7 +37,6 @@ namespace Xpress_backend_V2.Data
                 v => v.HasValue ? (v.Value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v.Value.ToUniversalTime()) : v,
                 v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
 
-            // Apply UTC converter to all DateTime properties
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
                 foreach (var property in entityType.GetProperties())
@@ -65,8 +66,10 @@ namespace Xpress_backend_V2.Data
             modelBuilder.Entity<AadharDoc>().HasKey(ad => ad.AadharId);
             modelBuilder.Entity<PassportDoc>().HasKey(pd => pd.PassportDocId);
             modelBuilder.Entity<VisaDoc>().HasKey(vd => vd.VisaDocId);
+            #endregion
 
-            // Configure RMT entity with property constraints
+            // This part remains unchanged
+            #region RMT Entity Configuration
             modelBuilder.Entity<RMT>(entity =>
             {
                 entity.Property(r => r.ProjectCode).IsRequired().HasMaxLength(50);
@@ -82,8 +85,10 @@ namespace Xpress_backend_V2.Data
                 entity.Property(r => r.DuHeadEmail).HasMaxLength(100);
                 entity.Property(r => r.IsActive).HasDefaultValue(true);
             });
+            #endregion
 
             // Configure relationships
+            #region Relationships
             modelBuilder.Entity<TravelRequest>()
                 .HasOne(tr => tr.User)
                 .WithMany(u => u.TravelRequests)
@@ -104,7 +109,6 @@ namespace Xpress_backend_V2.Data
                 .WithMany(u => u.CreatedTicketOptions)
                 .HasForeignKey(to => to.CreatedByUserId);
 
-            // TravelRequest.ProjectCode references RMT.ProjectCode
             modelBuilder.Entity<TravelRequest>()
                 .HasOne(tr => tr.Project)
                 .WithMany(r => r.TravelRequests)
@@ -116,10 +120,24 @@ namespace Xpress_backend_V2.Data
                 .WithMany(tm => tm.TravelRequests)
                 .HasForeignKey(tr => tr.TravelModeId);
 
+            // ***************************************************************
+            // ** START: MODIFICATION **
+
+            // STEP 1: REMOVE THE OLD RELATIONSHIP CONFIGURATION
+            // modelBuilder.Entity<TravelRequest>()
+            //     .HasOne(tr => tr.Airline)
+            //     .WithMany(a => a.TravelRequests)
+            //     .HasForeignKey(tr => tr.AirlineId);
+
+            // STEP 2: ADD THE NEW 1-TO-MANY RELATIONSHIP CONFIGURATION
             modelBuilder.Entity<TravelRequest>()
-                .HasOne(tr => tr.Airline)
-                .WithMany(a => a.TravelRequests)
-                .HasForeignKey(tr => tr.AirlineId);
+                .HasMany(tr => tr.BookedAirlines)      // TravelRequest has many Airlines
+                .WithOne(a => a.TravelRequest)         // Each Airline has one TravelRequest
+                .HasForeignKey(a => a.RequestId)       // The foreign key is in the Airline table
+                .OnDelete(DeleteBehavior.Restrict);    // Prevent deleting a request if it has bookings
+
+            // ** END: MODIFICATION **
+            // ***************************************************************
 
             modelBuilder.Entity<TravelRequest>()
                 .HasOne(tr => tr.CurrentStatus)
@@ -166,6 +184,7 @@ namespace Xpress_backend_V2.Data
                 .WithMany(u => u.AadharDocs)
                 .HasForeignKey(ad => ad.UserId);
 
+            
             modelBuilder.Entity<AadharDoc>()
                 .HasOne(ad => ad.CreatedByUser)
                 .WithMany(u => u.CreatedAadharDocs)
@@ -190,6 +209,7 @@ namespace Xpress_backend_V2.Data
                 .HasOne(vd => vd.CreatedByUser)
                 .WithMany(u => u.CreatedVisaDocs)
                 .HasForeignKey(vd => vd.CreatedBy);
+            #endregion
         }
     }
 }

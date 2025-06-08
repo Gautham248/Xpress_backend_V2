@@ -2,12 +2,16 @@
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models.DTO;
+using System.Linq; // Required for Enumerable.Any and Contains
 
 namespace Xpress_backend_V2.Repository
 {
     public class TravelRequestStatsRepository : ITravelRequestStatsRepository
     {
-        private readonly ApiDbContext _context; // Replace with your actual DbContext name
+        private readonly ApiDbContext _context;
+        // Define the same valid statuses as in CalendarTravelRequestRepository
+        private readonly string[] _calendarValidStatuses = { "PendingReview", "TicketDispatched", "In-transit", "Returned", "Closed" };
+
 
         public TravelRequestStatsRepository(ApiDbContext context)
         {
@@ -17,6 +21,8 @@ namespace Xpress_backend_V2.Repository
         public async Task<int> GetTodaysNewRequestsCountAsync()
         {
             var today = DateTime.UtcNow.Date;
+           
+
             return await _context.TravelRequests
                 .CountAsync(tr => tr.IsActive && tr.CreatedAt.Date == today);
         }
@@ -28,7 +34,6 @@ namespace Xpress_backend_V2.Repository
             {
                 return 0;
             }
-
             return await _context.TravelRequests
                 .Include(tr => tr.CurrentStatus)
                 .CountAsync(tr => tr.IsActive &&
@@ -43,33 +48,38 @@ namespace Xpress_backend_V2.Repository
             {
                 return 0;
             }
-
             return await _context.TravelRequests
                 .Include(tr => tr.CurrentStatus)
                 .CountAsync(tr => tr.IsActive &&
                                    tr.CurrentStatus != null &&
                                    statusNames.Contains(tr.CurrentStatus.StatusName));
         }
-
         public async Task<TravelLegCountsDto> GetTodaysTravelLegCountsAsync()
         {
-            var today = DateTime.UtcNow.Date;
+            // Get today's date in UTC
+            var todayUtc = DateTime.UtcNow.Date;
 
             var outboundDepartures = await _context.TravelRequests
-                .CountAsync(tr => tr.IsActive && tr.OutboundDepartureDate.Date == today);
+                .Include(tr => tr.CurrentStatus)
+                .CountAsync(tr => tr.IsActive &&
+                                   tr.OutboundDepartureDate.Date == todayUtc &&
+                                   tr.CurrentStatus != null &&
+                                   _calendarValidStatuses.Contains(tr.CurrentStatus.StatusName));
 
             var returnArrivals = await _context.TravelRequests
+                .Include(tr => tr.CurrentStatus)
                 .CountAsync(tr => tr.IsActive &&
                                    tr.ReturnArrivalDate.HasValue &&
-                                   tr.ReturnArrivalDate.Value.Date == today);
+                                   tr.ReturnArrivalDate.Value.Date == todayUtc &&
+                                   tr.CurrentStatus != null &&
+                                   _calendarValidStatuses.Contains(tr.CurrentStatus.StatusName));
 
             return new TravelLegCountsDto
             {
                 TodayOutboundDepartureCount = outboundDepartures,
-                TodayReturnArrivalCount = returnArrivals
+                TodayReturnArrivalCount = returnArrivals,
             };
         }
-
         public async Task<int> GetSlaBreachedRequestsCountAsync(IEnumerable<string> statusNames, TimeSpan slaThreshold)
         {
             if (statusNames == null || !statusNames.Any())
@@ -77,14 +87,15 @@ namespace Xpress_backend_V2.Repository
                 return 0;
             }
 
-
+            var currentTime = DateTime.UtcNow;
+            var slaBreachCutoff = currentTime.Subtract(slaThreshold);
 
             return await _context.TravelRequests
                 .Include(tr => tr.CurrentStatus)
                 .CountAsync(tr => tr.IsActive &&
                                    tr.CurrentStatus != null &&
                                    statusNames.Contains(tr.CurrentStatus.StatusName) &&
-                                   (tr.UpdatedAt > tr.CreatedAt.Add(slaThreshold)));
+                                   tr.CreatedAt < slaBreachCutoff);
         }
     }
 }
