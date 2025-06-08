@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using System.Net; // Required for HttpStatusCode
+using System.Net; 
 using Xpress_backend_V2.Interface;
-using Xpress_backend_V2.Models; // Assuming APIResponse is in this namespace
+using Xpress_backend_V2.Models; 
 
 namespace Xpress_backend_V2.Controllers
 {
@@ -13,7 +13,7 @@ namespace Xpress_backend_V2.Controllers
         private readonly ILogger<TravelAgencyStatsController> _logger;
         protected APIResponse _response;
 
-        // Inject ILogger for robust error handling
+       
         public TravelAgencyStatsController(ITravelAgencyStatRepository statRepository, ILogger<TravelAgencyStatsController> logger)
         {
             _statRepository = statRepository;
@@ -24,8 +24,7 @@ namespace Xpress_backend_V2.Controllers
         /// <summary>
         /// Gets aggregated statistics for travel agencies within a specified date range.
         /// </summary>
-        /// <param name="startDate" example="2023-01-01">The start date for the report (YYYY-MM-DD).</param>
-        /// <param name="endDate" example="2023-12-31">The end date for the report (YYYY-MM-DD).</param>
+
         /// <returns>A standardized API response containing a list of travel agency statistics.</returns>
         [HttpGet("stats")] // Using "stats" to be more explicit, e.g., GET api/TravelAgencyStats/stats
         [ProducesResponseType(typeof(APIResponse), StatusCodes.Status200OK)]

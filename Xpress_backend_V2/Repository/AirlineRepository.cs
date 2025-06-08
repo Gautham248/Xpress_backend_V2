@@ -14,11 +14,10 @@ namespace Xpress_backend_V2.Repository
             _context = context;
         }
 
-        // This now returns ALL individual flight bookings, not a distinct list of companies.
+       
         public async Task<IEnumerable<Airline>> GetAllAsync()
         {
-            // The old .Include(a => a.TravelRequests) is invalid.
-            // We now include the single parent TravelRequest.
+  
             return await _context.Airlines
                 .Include(a => a.TravelRequest)
                 .ToListAsync();
@@ -26,15 +25,13 @@ namespace Xpress_backend_V2.Repository
 
         public async Task<Airline> GetByIdAsync(int airlineId)
         {
-            // The old .Include(a => a.TravelRequests) is invalid.
-            // We now include the single parent TravelRequest.
+            
             return await _context.Airlines
                 .Include(a => a.TravelRequest)
                 .FirstOrDefaultAsync(a => a.AirlineId == airlineId);
         }
 
-        // The calling service/controller is responsible for setting the RequestId
-        // on the airline object before calling this method.
+       
         public async Task AddAsync(Airline airline)
         {
             _context.Airlines.Add(airline);
@@ -57,9 +54,6 @@ namespace Xpress_backend_V2.Repository
             }
         }
 
-        // ----- IMPLEMENTATION OF NEW, MORE USEFUL METHODS -----
-
-        /// <inheritdoc/>
         public async Task<IEnumerable<string>> GetDistinctAirlineNamesAsync()
         {
             return await _context.Airlines
@@ -69,7 +63,6 @@ namespace Xpress_backend_V2.Repository
                 .ToListAsync();
         }
 
-        /// <inheritdoc/>
         public async Task<IEnumerable<Airline>> GetAirlinesByRequestIdAsync(string requestId)
         {
             return await _context.Airlines

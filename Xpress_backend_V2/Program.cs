@@ -47,6 +47,7 @@ builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IProcessingTimeRepository, ProcessingTimeRepository>();
 builder.Services.AddScoped<IDocumentStatusRepository, DocumentStatusRepository>();
 builder.Services.AddScoped<ITravelAgencyStatRepository, TravelAgencyStatRepository>();
+builder.Services.AddScoped<ITravelRequestRepo, TravelRequestRepo>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 

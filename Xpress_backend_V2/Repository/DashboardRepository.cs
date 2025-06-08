@@ -17,11 +17,11 @@ namespace Xpress_backend_V2.Repository
         }
 
         // =================================================================================
-        // API 1 Implementation (No changes needed here)
+        // API 1 Implementation 
         // =================================================================================
         public async Task<RequestStatusOverviewDto> GetRequestStatusOverviewAsync(DateTime startDate, DateTime endDate)
         {
-            // Set up the universal date filter. This is reusable and efficient.
+           
             var baseQuery = _context.TravelRequests
                 .Where(tr => tr.CreatedAt.Date >= startDate.Date && tr.CreatedAt.Date <= endDate.Date);
 
@@ -55,7 +55,7 @@ namespace Xpress_backend_V2.Repository
         }
 
         // =================================================================================
-        // API 2 Implementation (No changes needed here)
+        // API 2 Implementation 
         // =================================================================================
         public async Task<ExpenseOverviewDto> GetExpenseOverviewAsync(DateTime startDate, DateTime endDate)
         {
@@ -91,7 +91,7 @@ namespace Xpress_backend_V2.Repository
         }
 
         // =================================================================================
-        // API 3 Implementation (This method has been corrected)
+        // API 3 Implementation 
         // =================================================================================
         public async Task<TripDetailsOverviewDto> GetTripDetailsOverviewAsync(DateTime startDate, DateTime endDate)
         {
@@ -110,7 +110,7 @@ namespace Xpress_backend_V2.Repository
             // 2. Fetch the detailed list with the correct includes and projection
             var tripsList = await filteredQuery
                 .Include(tr => tr.CurrentStatus)
-                // Correctly include the collection of Airline bookings
+                
                 .Include(tr => tr.BookedAirlines)
                 .Select(tr => new TripDetailItemDto
                 {
@@ -118,7 +118,7 @@ namespace Xpress_backend_V2.Repository
                     RequestDate = tr.CreatedAt,
                     Status = tr.CurrentStatus.StatusName,
                     TravelType = tr.IsInternational ? "International" : "Domestic",
-                    // Safely join the names of all booked airlines into a single comma-separated string
+                   
                     Airline = tr.BookedAirlines.Any()
                               ? string.Join(", ", tr.BookedAirlines.Select(a => a.AirlineName))
                               : "N/A",

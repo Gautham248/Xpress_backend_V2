@@ -35,8 +35,7 @@ namespace Xpress_backend_V2.Controllers
                 // --- Core Logic ---
                 var data = await _processingTimeRepository.GetAverageReviewToDispatchTimeAsync();
 
-                // This handles the specific business case where the repository determines that the base statuses
-                // (e.g., 'PendingReview') do not exist in the database.
+                
                 if (data == null)
                 {
                     response.IsSuccess = false;
@@ -53,11 +52,10 @@ namespace Xpress_backend_V2.Controllers
             }
             catch (Exception ex)
             {
-                // --- Unhandled Exception Case ---
                 response.IsSuccess = false;
                 response.ErrorMessages.Add($"An unexpected error occurred: {ex.Message}");
                 response.StatusCode = HttpStatusCode.InternalServerError;
-                // It is highly recommended to log the full exception `ex` with a logging framework here.
+        
                 return StatusCode(StatusCodes.Status500InternalServerError, response);
             }
         }
