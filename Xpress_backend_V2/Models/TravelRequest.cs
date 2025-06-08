@@ -34,11 +34,10 @@
         public int? SelectedTicketOptionId { get; set; } // FK → TicketOptions
         public string? TravelAgencyName { get; set; }
         public decimal? TravelAgencyExpense { get; set; }
-        public int? AirlineId { get; set; } // FK → Airlines
+        //public int? AirlineId { get; set; } // FK → Airlines
         public decimal? TotalExpense { get; set; }
         public string? TicketDocumentPath { get; set; }
         public string? LDCertificatePath { get; set; }
-
         public string? TravelFeedback { get; set; }
         public DateTime CreatedAt { get; set; } // Always UTC
         public DateTime UpdatedAt { get; set; } // Always UTC
@@ -50,7 +49,8 @@
         public RMT Project { get; set; }
         public RequestStatus CurrentStatus { get; set; }
         public TicketOption? SelectedTicketOption { get; set; }
-        public Airline? Airline { get; set; }
+        //public Airline? Airline { get; set; }
+        public ICollection<Airline> BookedAirlines { get; set; }
         public ICollection<TicketOption> TicketOptions { get; set; }
         public ICollection<AuditLog> AuditLogs { get; set; }
     }
