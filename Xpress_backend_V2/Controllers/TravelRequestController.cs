@@ -678,5 +678,190 @@ namespace Xpress_backend_V2.Controllers
             _response.StatusCode = HttpStatusCode.OK;
             return Ok(_response);
         }
+
+        // Feedback Submission
+        [HttpPut("{requestId}/travelfeedback")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> SubmitTravelFeedback(
+        string requestId,
+        [FromBody] SubmitTravelFeedbackDTO feedbackDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList();
+                return BadRequest(_response);
+            }
+
+            var authenticatedUserId = GetCurrentUserId();
+
+            var userIdForAudit = feedbackDto.SubmittingUserId;
+
+            var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
+            if (travelRequest == null)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.NotFound;
+                _response.ErrorMessages.Add($"Travel request with ID '{requestId}' not found.");
+                return NotFound(_response);
+            }
+
+            if (!string.IsNullOrEmpty(travelRequest.TravelFeedback))
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.Conflict;
+                _response.ErrorMessages.Add($"Feedback has already been submitted for this travel request.");
+                return Conflict(_response);
+            }
+
+            travelRequest.TravelFeedback = feedbackDto.FeedbackText;
+            travelRequest.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                await _travelRequestService.UpdateAsync(travelRequest);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating travel request with feedback for ID {RequestId}", requestId);
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add($"Error submitting feedback: {ex.Message}");
+                return StatusCode((int)HttpStatusCode.InternalServerError, _response);
+            }
+
+            var auditLogEntry = new AuditLog
+            {
+                RequestId = travelRequest.RequestId,
+                UserId = userIdForAudit,
+                ActionType = "TRAVEL_FEEDBACK_SUBMITTED",
+                ChangeDescription = $"Travel feedback submitted by user ID {userIdForAudit}.",
+                Comments = $"Feedback: \"{feedbackDto.FeedbackText.Substring(0, Math.Min(feedbackDto.FeedbackText.Length, 200))}\""
+            };
+
+            try
+            {
+                await _auditLogService.AddAsync(auditLogEntry);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding audit log for feedback submission on Request ID {RequestId}", requestId);
+            }
+
+            var updatedRequestDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
+            var auditLogDto = _mapper.Map<AuditLogResponseDTO>(auditLogEntry);
+
+            _response.IsSuccess = true;
+            _response.Result = new
+            {
+                Message = "Travel feedback submitted successfully.",
+                UpdatedRequest = updatedRequestDto,
+                AuditLog = auditLogDto
+            };
+            _response.StatusCode = HttpStatusCode.OK;
+            return Ok(_response);
+        }
+
+        // Upload Tickets Modal
+        [HttpPut("{requestId}/uploadticketdetails")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UploadTicketDetails(string requestId, [FromBody] TravelRequestUploadTicketDTO uploadTicketDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList();
+                return BadRequest(_response);
+            }
+
+            try
+            {
+                var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
+                if (travelRequest == null)
+                {
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.NotFound;
+                    _response.ErrorMessages.Add($"Travel request with ID {requestId} not found.");
+                    return NotFound(_response);
+                }
+
+                var oldStatusIdForAudit = travelRequest.CurrentStatusId;
+
+                if (uploadTicketDto.Airlines != null && uploadTicketDto.Airlines.Any())
+                {
+                    foreach (var airlineDto in uploadTicketDto.Airlines)
+                    {
+                        var newAirlineSegment = new Airline
+                        {
+                            AirlineName = airlineDto.Name,
+                            AirlineExpense = (double)airlineDto.Cost,
+                            RequestId = requestId
+                        };
+
+                        _context.Airlines.Add(newAirlineSegment);
+                        _logger.LogInformation("Prepared airline segment: {AirlineName} for Request ID: {RequestId}", newAirlineSegment.AirlineName, requestId);
+                    }
+                }
+
+                travelRequest.TravelAgencyName = uploadTicketDto.TravelAgencyName;
+                travelRequest.TravelAgencyExpense = uploadTicketDto.AgencyBookingCharge;
+                travelRequest.TotalExpense = uploadTicketDto.TotalExpense;
+                travelRequest.TicketDocumentPath = uploadTicketDto.PdfFilePath;
+
+                travelRequest.UpdatedAt = DateTime.UtcNow;
+                travelRequest.CurrentStatusId = TICKET_UPLOADED_STATUS_ID;
+
+                _context.Entry(travelRequest).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+
+                var auditLog = new AuditLog
+                {
+                    RequestId = travelRequest.RequestId,
+                    UserId = travelRequest.UserId,
+                    ActionType = "TICKET_DETAILS_UPLOADED",
+                    OldStatusId = oldStatusIdForAudit,
+                    NewStatusId = travelRequest.CurrentStatusId,
+                    ChangeDescription = "Ticket details and airline information uploaded.",
+                    Comments = $"Agency: {travelRequest.TravelAgencyName}, Total: {travelRequest.TotalExpense}",
+                    Timestamp = DateTime.UtcNow
+                };
+                await _auditLogService.AddAsync(auditLog);
+
+                _response.IsSuccess = true;
+                _response.StatusCode = HttpStatusCode.OK;
+                var responseDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
+                // If responseDto needs BookedAirlines and they aren't mapping, you might need to:
+                // var freshTravelRequest = await _travelRequestService.GetByIdAsync(requestId); // This should include BookedAirlines due to repo changes
+                // responseDto = _mapper.Map<TravelRequestResponseDTO>(freshTravelRequest);
+                _response.Result = responseDto;
+                return Ok(_response);
+
+            }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogError(dbEx, "Database update error occurred while uploading ticket details for Request ID {RequestId}.", requestId);
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add("A database error occurred. Please ensure data is valid and try again.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, _response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unexpected error occurred while uploading ticket details for Request ID {RequestId}.", requestId);
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add("An unexpected error occurred. Please try again later.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, _response);
+            }
+        }
     }
 }
