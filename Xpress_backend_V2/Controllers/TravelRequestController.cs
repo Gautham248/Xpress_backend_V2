@@ -747,7 +747,7 @@ namespace Xpress_backend_V2.Controllers
         }
 
         // Upload Tickets Modal
-        [HttpPut("{requestId}/upload-ticket-details")]
+        [HttpPut("{requestId}/uploadticketdetails")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -764,8 +764,6 @@ namespace Xpress_backend_V2.Controllers
 
             try
             {
-                // Fetch the existing TravelRequest. It's crucial that this entity is tracked by the DbContext.
-                // _travelRequestService.GetByIdAsync should return a tracked entity if it doesn't use AsNoTracking().
                 var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
                 if (travelRequest == null)
                 {
@@ -775,9 +773,8 @@ namespace Xpress_backend_V2.Controllers
                     return NotFound(_response);
                 }
 
-                var oldStatusIdForAudit = travelRequest.CurrentStatusId; // Capture old status before changing
+                var oldStatusIdForAudit = travelRequest.CurrentStatusId;
 
-                // --- Step 1: Create and Link Airline Entries ---
                 if (uploadTicketDto.Airlines != null && uploadTicketDto.Airlines.Any())
                 {
                     foreach (var airlineDto in uploadTicketDto.Airlines)
@@ -786,63 +783,41 @@ namespace Xpress_backend_V2.Controllers
                         {
                             AirlineName = airlineDto.Name,
                             AirlineExpense = (double)airlineDto.Cost,
-                            RequestId = requestId // *** Link the new airline segment to the current TravelRequest ***
+                            RequestId = requestId
                         };
 
-                        // Add the new segment to the DbContext.
-                        // EF Core will handle inserting it and setting up the relationship.
                         _context.Airlines.Add(newAirlineSegment);
-                        // We'll call SaveChangesAsync once at the end for atomicity.
                         _logger.LogInformation("Prepared airline segment: {AirlineName} for Request ID: {RequestId}", newAirlineSegment.AirlineName, requestId);
                     }
                 }
 
-                // --- Step 2: Update TravelRequest scalar properties ---
                 travelRequest.TravelAgencyName = uploadTicketDto.TravelAgencyName;
                 travelRequest.TravelAgencyExpense = uploadTicketDto.AgencyBookingCharge;
                 travelRequest.TotalExpense = uploadTicketDto.TotalExpense;
                 travelRequest.TicketDocumentPath = uploadTicketDto.PdfFilePath;
 
-                // travelRequest.AirlineId = ...; // This property no longer exists, remove this logic.
-                // The link is now through the collection travelRequest.BookedAirlines (implicitly handled
-                // by setting RequestId on new Airline entities and EF Core relationships).
-
                 travelRequest.UpdatedAt = DateTime.UtcNow;
-                travelRequest.CurrentStatusId = TICKET_UPLOADED_STATUS_ID; // Update to the new status
+                travelRequest.CurrentStatusId = TICKET_UPLOADED_STATUS_ID;
 
-                // --- Step 3: Save all changes (New Airlines and updated TravelRequest) ---
-                // Instead of calling _travelRequestService.UpdateAsync(travelRequest) separately
-                // after adding airlines to the context, a single SaveChangesAsync here will be more atomic
-                // and handle both the new Airline entities and the updates to the TravelRequest entity.
-                // This assumes _travelRequestService.UpdateAsync essentially does _context.Entry(..).State = Modified and SaveChanges.
-                // If _travelRequestService.UpdateAsync has other critical business logic, you might need to adapt.
-                // For this scenario, directly saving the context is often cleaner.
-
-                // If _travelRequestService.UpdateAsync just sets state and saves, you can do this:
-                _context.Entry(travelRequest).State = EntityState.Modified; // Ensure TravelRequest is marked as modified
-                await _context.SaveChangesAsync(); // This saves new airlines and updated TravelRequest
+                _context.Entry(travelRequest).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
 
 
-                // --- Step 4: Audit Log ---
                 var auditLog = new AuditLog
                 {
                     RequestId = travelRequest.RequestId,
-                    UserId = travelRequest.UserId, // Or the admin/user performing the upload
+                    UserId = travelRequest.UserId,
                     ActionType = "TICKET_DETAILS_UPLOADED",
-                    OldStatusId = oldStatusIdForAudit, // Use the captured old status
-                    NewStatusId = travelRequest.CurrentStatusId, // Current new status
+                    OldStatusId = oldStatusIdForAudit,
+                    NewStatusId = travelRequest.CurrentStatusId,
                     ChangeDescription = "Ticket details and airline information uploaded.",
                     Comments = $"Agency: {travelRequest.TravelAgencyName}, Total: {travelRequest.TotalExpense}",
                     Timestamp = DateTime.UtcNow
                 };
-                await _auditLogService.AddAsync(auditLog); // Assuming AddAsync handles SaveChanges for AuditLog or you save it later
+                await _auditLogService.AddAsync(auditLog);
 
                 _response.IsSuccess = true;
                 _response.StatusCode = HttpStatusCode.OK;
-                // To include the newly added airlines in the response, ensure your DTO mapping can handle it
-                // or explicitly load them if _mapper.Map doesn't automatically.
-                // If GetByIdAsync used by the service already includes BookedAirlines, they might be populated.
-                // If not, you might need to fetch travelRequest again or ensure the DTO mapping is correct.
                 var responseDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
                 // If responseDto needs BookedAirlines and they aren't mapping, you might need to:
                 // var freshTravelRequest = await _travelRequestService.GetByIdAsync(requestId); // This should include BookedAirlines due to repo changes
