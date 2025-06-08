@@ -116,9 +116,9 @@ namespace Xpress_backend_V2.Data
                 .HasForeignKey(tr => tr.TravelModeId);
 
             modelBuilder.Entity<TravelRequest>()
-                .HasOne(tr => tr.Airline)
-                .WithMany(a => a.TravelRequests)
-                .HasForeignKey(tr => tr.AirlineId);
+                .HasMany(tr => tr.BookedAirlines)
+                .WithOne(a => a.TravelRequest)
+                .HasForeignKey(a => a.RequestId);
 
             modelBuilder.Entity<TravelRequest>()
                 .HasOne(tr => tr.CurrentStatus)

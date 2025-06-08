@@ -25,7 +25,7 @@ namespace Xpress_backend_V2.Repository
                 .Include(tr => tr.Project)
                 .Include(tr => tr.CurrentStatus)
                 .Include(tr => tr.SelectedTicketOption)
-                .Include(tr => tr.Airline)
+                .Include(tr => tr.BookedAirlines)
                 .Where(tr => tr.IsActive)
                 .ToListAsync();
         }
@@ -38,7 +38,7 @@ namespace Xpress_backend_V2.Repository
                 .Include(tr => tr.Project)
                 .Include(tr => tr.CurrentStatus)
                 .Include(tr => tr.SelectedTicketOption)
-                .Include(tr => tr.Airline)
+                .Include(tr => tr.BookedAirlines)
                 .FirstOrDefaultAsync(tr => tr.RequestId == requestId && tr.IsActive);
         }
 

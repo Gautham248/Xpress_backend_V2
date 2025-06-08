@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
-using Xpress_backend_V2.Models.DTO;
+using Xpress_backend_V2.Models.DTO; // Assuming AirlineReportDto is here
+using System.Linq; // Required for LINQ methods like GroupBy, Select, Sum, etc.
 
 namespace Xpress_backend_V2.Repository
 {
@@ -16,28 +17,29 @@ namespace Xpress_backend_V2.Repository
 
         public async Task<IEnumerable<AirlineReportDto>> GetAirlineReportAsync(DateTime startDate, DateTime endDate)
         {
-            // Ensure the end date includes the entire day
+            // Ensure the end date includes the entire day for accurate range filtering
             var inclusiveEndDate = endDate.Date.AddDays(1).AddTicks(-1);
 
-            var report = await _context.TravelRequests
-                // Filter requests that have an assigned airline
-                .Where(tr => tr.AirlineId != null)
-                // Filter by the date range using OutboundDepartureDate
-                .Where(tr => tr.OutboundDepartureDate >= startDate.Date && tr.OutboundDepartureDate <= inclusiveEndDate)
-                // Group by both Airline Name and the IsInternational flag
-                .GroupBy(tr => new
+            var report = await _context.Airlines // <<<<----- START FROM AIRLINES (SEGMENTS)
+                .Include(a => a.TravelRequest) // Include the parent TravelRequest to access its properties
+                .Where(a => a.TravelRequest != null && // Ensure the segment is linked to a TravelRequest
+                             a.TravelRequest.IsActive && // Optionally filter by active travel requests
+                             a.TravelRequest.OutboundDepartureDate >= startDate.Date &&
+                             a.TravelRequest.OutboundDepartureDate <= inclusiveEndDate)
+                .GroupBy(a => new // Group by AirlineName and the TravelRequest's IsInternational flag
                 {
-                    tr.Airline.AirlineName,
-                    tr.IsInternational
+                    a.AirlineName, // This is the name of the airline for the segment
+                    a.TravelRequest.IsInternational
                 })
-                // Project the grouped data into our DTO
                 .Select(g => new AirlineReportDto
                 {
                     AirlineName = g.Key.AirlineName,
                     TypeOfTravel = g.Key.IsInternational ? "International" : "Domestic",
-                    TravelRequestCount = g.Count(),
-                    // Sum the TotalExpense for each group. Handle potential nulls with '?? 0'
-                    TotalAirlineExpense = g.Sum(tr => tr.TotalExpense ?? 0)
+                    // Count how many distinct travel requests this airline was part of for this type of travel
+                    // Or, if each Airline row is a segment and you want to count segments: g.Count()
+                    TravelRequestCount = g.Select(x => x.RequestId).Distinct().Count(),
+                    // Sum the AirlineExpense for each segment in the group
+                    TotalAirlineExpense = g.Sum(x => (decimal)x.AirlineExpense) // Cast double to decimal
                 })
                 .OrderBy(dto => dto.AirlineName)
                 .ThenBy(dto => dto.TypeOfTravel)
