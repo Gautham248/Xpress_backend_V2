@@ -38,6 +38,8 @@
         public decimal? TotalExpense { get; set; }
         public string? TicketDocumentPath { get; set; }
         public string? LDCertificatePath { get; set; }
+
+        public string? TravelFeedback { get; set; }
         public DateTime CreatedAt { get; set; } // Always UTC
         public DateTime UpdatedAt { get; set; } // Always UTC
         public bool IsActive { get; set; }
