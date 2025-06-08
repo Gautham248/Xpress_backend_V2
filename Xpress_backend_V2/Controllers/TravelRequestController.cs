@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Security.Claims;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +22,7 @@ namespace Xpress_backend_V2.Controllers
         protected APIResponse _response;
 
         private const int DefaultInitialStatusId = 1;
+        private const int TICKET_UPLOADED_STATUS_ID = 7;
 
         public TravelRequestController(ITravelRequestServices travelRequestService,
             ApiDbContext context,
@@ -34,6 +36,12 @@ namespace Xpress_backend_V2.Controllers
             _context = context;
             _logger = logger;
             _response = new APIResponse();
+        }
+
+        private int GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(userIdClaim, out var userId) ? userId : 0;
         }
 
         private DateTime EnsureUtc(DateTime dt)
@@ -801,6 +809,7 @@ namespace Xpress_backend_V2.Controllers
                     {
                         var newAirlineSegment = new Airline
                         {
+                            AirlineId = Math.Abs(Guid.NewGuid().GetHashCode()),
                             AirlineName = airlineDto.Name,
                             AirlineExpense = (double)airlineDto.Cost,
                             RequestId = requestId
@@ -808,6 +817,7 @@ namespace Xpress_backend_V2.Controllers
 
                         _context.Airlines.Add(newAirlineSegment);
                         _logger.LogInformation("Prepared airline segment: {AirlineName} for Request ID: {RequestId}", newAirlineSegment.AirlineName, requestId);
+                        
                     }
                 }
 

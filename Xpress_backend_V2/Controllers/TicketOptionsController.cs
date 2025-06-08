@@ -125,6 +125,7 @@ namespace Xpress_backend_V2.Controllers
 
             var ticketOption = new TicketOption
             {
+                OptionId = Math.Abs(Guid.NewGuid().GetHashCode()),
                 RequestId = requestId,
                 CreatedByUserId = createDto.CreatedByUserId,
                 OptionDescription = createDto.OptionDescription,
