@@ -15,7 +15,7 @@ namespace Xpress_backend_V2.Controllers
         private readonly ILogger<AirlineReportsController> _logger;
         
         protected APIResponse _response;
-
+        
         public AirlineReportsController(IAirlineReportRepository airlineReportRepository, ILogger<AirlineReportsController> logger)
         {
             _airlineReportRepository = airlineReportRepository;

@@ -7,7 +7,7 @@
 
         public double AirlineExpense { get; set; } // Expense per ticket
 
-        // Navigation property
-        public ICollection<TravelRequest> TravelRequests { get; set; }
+        public string? RequestId { get; set; } // FK -> Travel Request
+        public TravelRequest? TravelRequest { get; set; } // Navigation property
     }
 }
