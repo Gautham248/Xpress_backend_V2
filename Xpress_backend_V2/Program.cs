@@ -25,7 +25,9 @@ builder.Services.AddScoped<ITicketOptionServices, TicketOptionRepository>();
 builder.Services.AddScoped<IUserServices, UserRepository>();
 builder.Services.AddScoped<IRMTServices, RMTRepository>();
 builder.Services.AddScoped<ITravelModeServices, TravelModeRepository>();
-builder.Services.AddScoped<IAirlineServices, AirlineRepository>();
+
+builder.Services.AddScoped<IAirlineReportRepository, AirlineReportRepository>();
+
 builder.Services.AddScoped<IRequestStatusServices, RequestStatusRepository>();
 builder.Services.AddScoped<INotificationServices, NotificationRepository>();
 builder.Services.AddScoped<IUserNotificationServices, UserNotificationRepository>();
