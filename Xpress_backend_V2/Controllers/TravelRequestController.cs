@@ -120,6 +120,38 @@ namespace Xpress_backend_V2.Controllers
             public bool IsRejection { get; init; }
         }
 
+
+        [HttpGet("{requestId}/timeline")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> GetTimeline(string requestId)
+        {
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages.Add("Travel Request ID cannot be empty.");
+                return BadRequest(_response);
+            }
+
+            var timeline = await _travelRequestService.GetTimelineAsync(requestId);
+            if (timeline == null)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.NotFound;
+                _response.ErrorMessages.Add($"No timeline data found for request ID {requestId}.");
+                return NotFound(_response);
+            }
+
+            _response.IsSuccess = true;
+            _response.Result = timeline;
+            _response.StatusCode = HttpStatusCode.OK;
+            return Ok(_response);
+        }
+
+
+
         [HttpPost]
         [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

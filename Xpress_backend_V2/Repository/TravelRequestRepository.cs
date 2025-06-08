@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
@@ -10,11 +11,13 @@ namespace Xpress_backend_V2.Repository
     {
         private readonly ApiDbContext _context;
         private readonly ILogger<TravelRequestRepository> _logger;
+        private readonly IAuditLogServices _auditLogServices;
 
-        public TravelRequestRepository(ApiDbContext context, ILogger<TravelRequestRepository> logger)
+        public TravelRequestRepository(ApiDbContext context, ILogger<TravelRequestRepository> logger, IAuditLogServices auditLogServices)
         {
             _context = context;
             _logger = logger;
+            _auditLogServices = auditLogServices;
         }
 
         public async Task<IEnumerable<TravelRequest>> GetAllAsync()
@@ -220,6 +223,91 @@ namespace Xpress_backend_V2.Repository
                 throw;
             }
         }
+        public async Task<TravelRequest> GetRequestByIdAsync(string requestId)
+        {
+            return await _context.TravelRequests
+                .FirstOrDefaultAsync(tr => tr.RequestId == requestId);
+        }
 
+        public async Task<TravelRequestTimelineDTO?> GetTimelineAsync(string requestId)
+        {
+            _logger.LogInformation("Fetching timeline for RequestId: {RequestId}", requestId);
+
+            // Define status-changing action types (uppercase for comparison)
+            var statusChangingActions = new[]
+            {
+                "REQUEST_CREATED",
+                "STATUS_UPDATED",
+                "MANAGER_APPROVED",
+                "VERIFIED",
+                "STATUS_UPDATED_OPTIONS_LISTED",
+                "STATUS_UPDATED_OPTION_SELECTED",
+                "TICKET_OPTION_SELECTED",
+                "DU_HEAD_APPROVED",
+                "MANAGER_REJECTED",
+                "REQUEST_MODIFIED"
+            };
+
+            // Fetch audit logs
+            var auditLogs = await _auditLogServices.GetByTravelRequestAsync(requestId);
+            _logger.LogInformation("Found {Count} audit logs for RequestId: {RequestId}", auditLogs.Count(), requestId);
+
+            // Filter for status-changing actions
+            var filteredLogs = auditLogs
+                .Where(al => statusChangingActions.Contains(al.ActionType.ToUpper()))
+                .OrderBy(al => al.Timestamp)
+                .ToList();
+            _logger.LogInformation("Filtered to {Count} status-changing logs: {ActionTypes}",
+                filteredLogs.Count,
+                string.Join(", ", filteredLogs.Select(al => al.ActionType)));
+
+            if (!filteredLogs.Any())
+            {
+                _logger.LogWarning("No status-changing logs found for RequestId: {RequestId}", requestId);
+                return null;
+            }
+
+            // Use earliest log for requestDate if REQUEST_CREATED is missing
+            var creationLog = filteredLogs.FirstOrDefault(al => al.ActionType.ToUpper() == "REQUEST_CREATED");
+            var requestDate = creationLog?.Timestamp ?? filteredLogs.Min(al => al.Timestamp);
+
+            // Get latest status (exclude Modified for overall status)
+            var latestLog = filteredLogs
+                .Where(al => al.NewStatusId.HasValue && al.NewStatus?.StatusName != "Modified")
+                .OrderByDescending(al => al.Timestamp)
+                .FirstOrDefault();
+
+            var timelineDto = new TravelRequestTimelineDTO
+            {
+                Status = latestLog?.NewStatus?.StatusName ?? "PendingReview",
+                RequestDate = requestDate.ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture),
+                TravelerName = "Traveler",
+                TimelineEvents = filteredLogs.Select(al => new TimelineEventDTO
+                {
+                    Id = al.LogId.ToString(),
+                    Type = al.ActionType.ToUpper() switch
+                    {
+                        "REQUEST_CREATED" => "Pending",
+                        "REQUEST_MODIFIED" => "Modified",
+                        "TICKET_OPTION_SELECTED" => "OptionSelected",
+                        _ => al.NewStatus?.StatusName ?? al.ActionType
+                    },
+                    Date = al.ActionDate == DateTime.MinValue
+                        ? al.Timestamp.ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture)
+                        : al.ActionDate.ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture),
+                    Description = al.ChangeDescription ?? "No description provided.",
+                    Details = al.Comments
+                }).ToList()
+            };
+
+            _logger.LogInformation("Returning timeline with {Count} events for RequestId: {RequestId}: {EventTypes}",
+                timelineDto.TimelineEvents.Count,
+                requestId,
+                string.Join(", ", timelineDto.TimelineEvents.Select(e => e.Type)));
+
+            return timelineDto;
+        }
     }
+
+
 }
