@@ -28,7 +28,7 @@ namespace Xpress_backend_V2.Repository
                 .Include(tr => tr.Project)
                 .Include(tr => tr.CurrentStatus)
                 .Include(tr => tr.SelectedTicketOption)
-                .Include(tr => tr.BookedAirlines)
+                .Include(tr => tr.Airline)
                 .Where(tr => tr.IsActive)
                 .ToListAsync();
         }
@@ -41,7 +41,7 @@ namespace Xpress_backend_V2.Repository
                 .Include(tr => tr.Project)
                 .Include(tr => tr.CurrentStatus)
                 .Include(tr => tr.SelectedTicketOption)
-                .Include(tr => tr.BookedAirlines)
+                .Include(tr => tr.Airline)
                 .FirstOrDefaultAsync(tr => tr.RequestId == requestId && tr.IsActive);
         }
 
@@ -119,6 +119,18 @@ namespace Xpress_backend_V2.Repository
             return await query.ToListAsync();
         }
 
+        //public async Task<IEnumerable<TravelRequest>> GetAllTravelRequestsAsync()
+        //{
+        //    return await _context.TravelRequests
+        //        .Include(tr => tr.User)
+        //        .Include(tr => tr.IsInternational)
+        //        .Include(tr => tr.IsRoundTrip)
+        //        .Include(tr => tr.Project)
+        //        .Include(tr => tr.TravelMode)
+        //        .Include(tr => tr.CurrentStatus)
+        //        .Include(tr => tr.SelectedTicketOption)
+        //        .ToListAsync();
+        //}
         public async Task<TravelRequest> CreateTravelRequestAsync(TravelRequest travelRequest)
         {
             travelRequest.RequestId = Guid.NewGuid().ToString("N");
@@ -128,7 +140,6 @@ namespace Xpress_backend_V2.Repository
             await _context.SaveChangesAsync();
             return travelRequest;
         }
-
         // Travel Info Join Query
         public async Task<List<TravelInfoDTO>> GetTravelInfoAsync(string requestId)
         {

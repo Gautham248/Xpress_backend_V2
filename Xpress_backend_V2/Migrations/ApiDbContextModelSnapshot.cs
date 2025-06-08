@@ -74,12 +74,7 @@ namespace Xpress_backend_V2.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("RequestId")
-                        .HasColumnType("text");
-
                     b.HasKey("AirlineId");
-
-                    b.HasIndex("RequestId");
 
                     b.ToTable("Airlines");
                 });
@@ -364,6 +359,9 @@ namespace Xpress_backend_V2.Migrations
                     b.Property<string>("RequestId")
                         .HasColumnType("text");
 
+                    b.Property<int?>("AirlineId")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("AttendedCCT")
                         .HasColumnType("boolean");
 
@@ -473,6 +471,8 @@ namespace Xpress_backend_V2.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("RequestId");
+
+                    b.HasIndex("AirlineId");
 
                     b.HasIndex("CurrentStatusId");
 
@@ -632,15 +632,6 @@ namespace Xpress_backend_V2.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Xpress_backend_V2.Models.Airline", b =>
-                {
-                    b.HasOne("Xpress_backend_V2.Models.TravelRequest", "TravelRequest")
-                        .WithMany("BookedAirlines")
-                        .HasForeignKey("RequestId");
-
-                    b.Navigation("TravelRequest");
-                });
-
             modelBuilder.Entity("Xpress_backend_V2.Models.AuditLog", b =>
                 {
                     b.HasOne("Xpress_backend_V2.Models.RequestStatus", "NewStatus")
@@ -723,6 +714,10 @@ namespace Xpress_backend_V2.Migrations
 
             modelBuilder.Entity("Xpress_backend_V2.Models.TravelRequest", b =>
                 {
+                    b.HasOne("Xpress_backend_V2.Models.Airline", "Airline")
+                        .WithMany("TravelRequests")
+                        .HasForeignKey("AirlineId");
+
                     b.HasOne("Xpress_backend_V2.Models.RequestStatus", "CurrentStatus")
                         .WithMany("TravelRequests")
                         .HasForeignKey("CurrentStatusId")
@@ -751,6 +746,8 @@ namespace Xpress_backend_V2.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Airline");
 
                     b.Navigation("CurrentStatus");
 
@@ -801,6 +798,11 @@ namespace Xpress_backend_V2.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Xpress_backend_V2.Models.Airline", b =>
+                {
+                    b.Navigation("TravelRequests");
+                });
+
             modelBuilder.Entity("Xpress_backend_V2.Models.Notification", b =>
                 {
                     b.Navigation("UserNotifications");
@@ -833,8 +835,6 @@ namespace Xpress_backend_V2.Migrations
             modelBuilder.Entity("Xpress_backend_V2.Models.TravelRequest", b =>
                 {
                     b.Navigation("AuditLogs");
-
-                    b.Navigation("BookedAirlines");
 
                     b.Navigation("TicketOptions");
                 });
