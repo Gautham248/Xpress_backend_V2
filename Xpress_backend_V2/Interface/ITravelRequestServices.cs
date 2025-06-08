@@ -28,5 +28,7 @@ namespace Xpress_backend_V2.Interface
         Task<TravelRequest> UpdateTravelRequestAsync(TravelRequest travelRequestEntity);
 
         Task<TravelRequestTimelineDTO?> GetTimelineAsync(string requestId);
+
+        Task<IEnumerable<UserTravelRequestDTO>> GetTravelRequestsByUserIdAsync(int userId);
     }
 }

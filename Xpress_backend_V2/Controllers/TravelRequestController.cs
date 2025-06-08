@@ -109,6 +109,49 @@ namespace Xpress_backend_V2.Controllers
             public bool IsRejection { get; init; }
         }
 
+        [HttpGet("ByUser/{userId:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> GetActiveTravelRequestsByUserId(int userId)
+        {
+            var apiResponse = new APIResponse();
+
+            if (userId <= 0)
+            {
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                apiResponse.ErrorMessages.Add("User ID must be a positive integer.");
+                return BadRequest(apiResponse);
+            }
+
+            try
+            {
+                var travelRequests = await _travelRequestService.GetTravelRequestsByUserIdAsync(userId);
+
+                if (!travelRequests.Any())
+                {
+                    apiResponse.IsSuccess = false;
+                    apiResponse.StatusCode = HttpStatusCode.NotFound;
+                    apiResponse.ErrorMessages.Add("No active travel requests found for the specified user.");
+                    return NotFound(apiResponse);
+                }
+
+                apiResponse.IsSuccess = true;
+                apiResponse.StatusCode = HttpStatusCode.OK;
+                apiResponse.Result = travelRequests;
+                return Ok(apiResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving travel requests for UserId {UserId}.", userId);
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+                apiResponse.ErrorMessages.Add("An error occurred while retrieving travel requests.");
+                return StatusCode(StatusCodes.Status500InternalServerError, apiResponse);
+            }
+        }
+
 
         [HttpGet("{requestId}/timeline")]
         [ProducesResponseType(StatusCodes.Status200OK)]
