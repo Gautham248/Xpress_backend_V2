@@ -36,8 +36,6 @@ namespace Xpress_backend_V2.Controllers
 
         private int GetCurrentUserId()
         {
-            // Helper to get the authenticated user's ID
-            // Ensure your authentication setup populates User.Claims correctly
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             return int.TryParse(userIdClaim, out var userId) ? userId : 0;
         }
@@ -145,14 +143,6 @@ namespace Xpress_backend_V2.Controllers
             }
 
             var currentActingUserId = createDto.CreatedByUserId;
-            //var auditLogOption = new AuditLog
-            //{
-            //    RequestId = requestId,
-            //    UserId = currentActingUserId,
-            //    ActionType = "TICKET_OPTION_CREATED",
-            //    ChangeDescription = $"New ticket option {ticketOption.OptionId} ('{ticketOption.OptionDescription}') created.",
-            //};
-            //await _auditLogService.AddAsync(auditLogOption);
 
             if (statusActuallyChanged)
             {
@@ -291,16 +281,6 @@ namespace Xpress_backend_V2.Controllers
             travelRequest.CurrentStatusId = OPTION_SELECTED_STATUS_ID;
             travelRequest.UpdatedAt = DateTime.UtcNow;
             await _travelRequestService.UpdateAsync(travelRequest);
-
-            //var auditLogSelection = new AuditLog
-            //{
-            //    RequestId = requestId,
-            //    UserId = selectionDto.SelectingUserId,
-            //    ActionType = "TICKET_OPTION_SELECTED",
-            //    ChangeDescription = $"Ticket option {optionToSelect.OptionId} ('{optionToSelect.OptionDescription}') was selected.",
-            //    Comments = selectionDto.Comments
-            //};
-            //await _auditLogService.AddAsync(auditLogSelection);
 
             // Audit Log for Travel Request Status Change due to option selection
             var auditLogStatusChange = new AuditLog
@@ -483,17 +463,6 @@ namespace Xpress_backend_V2.Controllers
                 travelRequest.UpdatedAt = DateTime.UtcNow;
                 await _travelRequestService.UpdateAsync(travelRequest);
             }
-
-            //var deletedOptionDescriptions = string.Join(", ", ticketOptionsToDelete.Select(o => $"'{o.OptionDescription}' (ID: {o.OptionId})"));
-            //var auditLogDeletion = new AuditLog
-            //{
-            //    RequestId = requestId,
-            //    UserId = currentUserId,
-            //    ActionType = "ALL_TICKET_OPTIONS_DELETED",
-            //    ChangeDescription = $"All ({ticketOptionsToDelete.Count()}) ticket options deleted: {deletedOptionDescriptions}.",
-            //    Comments = wasAnyOptionSelected ? $"One of the deleted options (ID: {selectedOptionIdIfAny}) was previously selected." : "No options were selected prior to deletion."
-            //};
-            //await _auditLogService.AddAsync(auditLogDeletion);
 
             if (statusChanged && oldTravelRequestStatusId.HasValue)
             {
