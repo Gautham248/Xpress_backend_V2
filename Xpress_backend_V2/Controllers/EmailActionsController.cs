@@ -137,21 +137,24 @@ namespace Xpress_backend_V2.Controllers
             return await ProcessApprovalOrRejectionAction(requestId, actorEmail,
             async (travelRequest, actorUser, projectDetails) =>
             {
-                if (projectDetails.ProjectManagerEmail?.Equals(actorUser.EmployeeEmail, StringComparison.OrdinalIgnoreCase) != true)
+                if (projectDetails.ProjectManagerEmail?.ToLower() != actorUser.EmployeeEmail.ToLower())
                 {
                     throw new UnauthorizedAccessException($"User {actorUser.EmployeeName} is not the designated manager for this request.");
                 }
+
                 if (travelRequest.CurrentStatusId != StatusPendingReview)
                 {
                     // Gracefully handle if already processed or in a different state
                     string message = $"Request {travelRequest.RequestId} is not pending manager review (current status: {travelRequest.CurrentStatus?.StatusName}). No action taken.";
                     _logger.LogInformation("ManagerApproveRequest: " + message);
-                    return (travelRequest.CurrentStatusId, "NoChange-AlreadyProcessed", message, message); // Return current status and failure message
+                    return (travelRequest.CurrentStatusId, "NoChange-AlreadyProcessed", message, message);
                 }
+
                 await Task.CompletedTask;
                 return (StatusVerifiedByManager, "ManagerApproved", $"Travel Request {travelRequest.RequestId} approved by you (Manager).", null);
             }, "ManagerApproveRequest");
         }
+
 
         [HttpGet("manager-reject")]
         public async Task<IActionResult> ManagerRejectRequest([FromQuery] string requestId, [FromQuery] string actorEmail)

@@ -57,7 +57,7 @@ namespace Xpress_backend_V2.Repository
                 // However, for production or standard SMTP servers (like Gmail), this is not needed and insecure.
 
                 await smtpClient.ConnectAsync(_emailSettings.SmtpHost, _emailSettings.SmtpPort, _emailSettings.EnableSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None);
-                await smtpClient.AuthenticateAsync(_emailSettings.Username, _emailSettings.Password);
+                await smtpClient.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
                 await smtpClient.SendAsync(emailMessage);
                 await smtpClient.DisconnectAsync(true);
                 _logger.LogInformation("Email sent to {Recipients} with subject: {Subject}", string.Join(",", validEmails), subject);

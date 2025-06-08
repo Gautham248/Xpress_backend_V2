@@ -1,18 +1,20 @@
-﻿using Xpress_backend_V2.Models;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using Xpress_backend_V2.Models; // For User, TravelRequest, RMT
 
 namespace Xpress_backend_V2.Interface
 {
     public class EmailTemplateParameters
     {
         public TravelRequest TravelRequest { get; set; }
-        public User Requester { get; set; } // The employee who submitted the request
-        public User RecipientForSalutation { get; set; } // The User object (actual or placeholder) for "Hi {Name}"
-        public string ActualRecipientEmail { get; set; } // The definitive email string to send to AND use in action links
+        public User Requester { get; set; }
+        public User RecipientForSalutation { get; set; } // User obj for "Hi {Name}", can be placeholder
+        public string ActualRecipientEmail { get; set; } // Definitive email string for 'To:' and for action links
         public RMT ProjectDetails { get; set; }
-        public string ActionBaseUrl { get; set; }
+        public string ActionBaseUrl { get; set; } // Base URL of the CONFIRMATION PAGE (e.g., http://localhost:5173)
 
         public List<TicketOptionInfoNoToken> TicketOptions { get; set; }
-        public string Message { get; set; }
+        public string Message { get; set; } // For GetGeneralNotificationEmailAsync if it takes message via DTO
         public string SelectedOptionDescription { get; set; }
     }
 
@@ -34,5 +36,4 @@ namespace Xpress_backend_V2.Interface
         Task<(string Subject, string HtmlBody)> GetTicketBookedEmailAsync(EmailTemplateParameters parameters);
         Task<(string Subject, string HtmlBody)> GetGeneralNotificationEmailAsync(EmailTemplateParameters parameters, string notificationMessage);
     }
-
 }

@@ -1,129 +1,154 @@
-﻿using Microsoft.Extensions.Options;
+﻿using System;
 using System.Text;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
-using Xpress_backend_V2.Models.Configuration;
+using Microsoft.Extensions.Logging;
 
-namespace Xpress_backend_V2.Repository
+namespace Xpress_backend_V2.Services
 {
     public class EmailTemplateService : IEmailTemplateService
     {
-        public EmailTemplateService() { }
+        private readonly ILogger<EmailTemplateService> _logger;
 
-        private string GetRecipientNameForSalutation(User recipientUser, string defaultNameIfUserNull)
+        public EmailTemplateService(ILogger<EmailTemplateService> logger)
         {
-            // Use recipientUser.EmployeeName if available, otherwise fallback to RMT name or generic default
-            if (recipientUser != null && !string.IsNullOrWhiteSpace(recipientUser.EmployeeName) && recipientUser.EmployeeName != "ManagerPlaceholder" && recipientUser.EmployeeName != "DUHeadPlaceholder")
-            {
-                return recipientUser.EmployeeName;
-            }
-            return defaultNameIfUserNull; // This defaultName could be from RMT.ProjectManagerName or "Manager"
+            _logger = logger;
         }
 
+        private string GetSalutationDisplayName(EmailTemplateParameters p, string defaultName)
+        {
+            if (p.RecipientForSalutation != null && !string.IsNullOrWhiteSpace(p.RecipientForSalutation.EmployeeName) &&
+                p.RecipientForSalutation.EmployeeName != "ManagerPlaceholder" && p.RecipientForSalutation.EmployeeName != "DUHeadPlaceholder")
+            {
+                return p.RecipientForSalutation.EmployeeName;
+            }
+            if (p.ProjectDetails != null)
+            {
+                if (p.ActualRecipientEmail == p.ProjectDetails.ProjectManagerEmail && !string.IsNullOrWhiteSpace(p.ProjectDetails.ProjectManager)) // Uses RMT.ProjectManager
+                {
+                    return p.ProjectDetails.ProjectManager;
+                }
+                if (p.ActualRecipientEmail == p.ProjectDetails.DuHeadEmail && !string.IsNullOrWhiteSpace(p.ProjectDetails.DuHeadName))
+                {
+                    return p.ProjectDetails.DuHeadName;
+                }
+            }
+            return defaultName;
+        }
 
         public Task<(string Subject, string HtmlBody)> GetRequestSubmittedEmailAsync(EmailTemplateParameters p)
         {
             var subject = $"Travel Request {p.TravelRequest.RequestId} Submitted by {p.Requester.EmployeeName}";
-            // For this email, p.RecipientForSalutation is the Requester themselves
             var body = $@"
-                <p>Hi {GetRecipientNameForSalutation(p.RecipientForSalutation, p.Requester.EmployeeName)},</p>
+                <!DOCTYPE html><html><body style='font-family: Arial, sans-serif;'>
+                <p>Hi {GetSalutationDisplayName(p, p.Requester.EmployeeName)},</p>
                 <p>Your travel request ({p.TravelRequest.RequestId}) for project '{p.ProjectDetails.ProjectName}' to {p.TravelRequest.DestinationPlace} has been submitted and is pending review.</p>
                 <p>You will receive further notifications as your request progresses.</p>
-                <p>Thank you,<br/>Xpress Travel System</p>";
+                <p>Thank you,<br/>Xpress Travel System</p>
+                </body></html>";
             return Task.FromResult((subject, body));
         }
 
         public Task<(string Subject, string HtmlBody)> GetManagerApprovalRequestEmailAsync(EmailTemplateParameters p)
         {
-            if (string.IsNullOrWhiteSpace(p.ActualRecipientEmail)) // This is the manager's email from RMT
+            if (string.IsNullOrWhiteSpace(p.ActualRecipientEmail))
             {
-                return Task.FromResult(($"ERROR: Missing Manager Email for TR {p.TravelRequest.RequestId}", "<p>Could not generate manager approval email: manager's email address is missing.</p>"));
+                _logger.LogError("EmailTemplateService-ManagerApproval: ActualRecipientEmail missing for TR {ReqId}", p.TravelRequest.RequestId);
+                return Task.FromResult(($"ERROR: Config Error TR {p.TravelRequest.RequestId}", "<p>Internal error: Manager email missing for link generation.</p>"));
+            }
+            if (string.IsNullOrWhiteSpace(p.ActionBaseUrl))
+            { // ActionBaseUrl is the frontend base URL
+                _logger.LogError("EmailTemplateService-ManagerApproval: ActionBaseUrl missing for TR {ReqId}", p.TravelRequest.RequestId);
+                return Task.FromResult(($"ERROR: Config Error TR {p.TravelRequest.RequestId}", "<p>Internal error: System link configuration missing.</p>"));
             }
 
             var subject = $"ACTION REQUIRED: Approve Travel Request {p.TravelRequest.RequestId} for {p.Requester.EmployeeName}";
-            var approveUrl = $"{p.ActionBaseUrl}/manager-approve?requestId={p.TravelRequest.RequestId}&actorEmail={Uri.EscapeDataString(p.ActualRecipientEmail)}";
-            var rejectUrl = $"{p.ActionBaseUrl}/manager-reject?requestId={p.TravelRequest.RequestId}&actorEmail={Uri.EscapeDataString(p.ActualRecipientEmail)}";
-
-            var managerName = p.ProjectDetails.ProjectManager ?? "Manager"; // Use RMT name or default
+            // Links point to the confirmation page path appended to ActionBaseUrl
+            var approveUrl = $"{p.ActionBaseUrl.TrimEnd('/')}/confirm-action.html?action=manager-approve&requestId={p.TravelRequest.RequestId}&intendedActor={Uri.EscapeDataString(p.ActualRecipientEmail)}";
+            var rejectUrl = $"{p.ActionBaseUrl.TrimEnd('/')}/confirm-action.html?action=manager-reject&requestId={p.TravelRequest.RequestId}&intendedActor={Uri.EscapeDataString(p.ActualRecipientEmail)}";
+            var salutationName = GetSalutationDisplayName(p, p.ProjectDetails.ProjectManager ?? "Manager");
 
             var body = $@"
-                <p>Hi {GetRecipientNameForSalutation(p.RecipientForSalutation, managerName)},</p>
+                <!DOCTYPE html><html><body style='font-family: Arial, sans-serif;'>
+                <p>Hi {salutationName},</p>
                 <p>Travel request ({p.TravelRequest.RequestId}) from {p.Requester.EmployeeName} for project '{p.ProjectDetails.ProjectName}' (Destination: {p.TravelRequest.DestinationPlace}) requires your approval.</p>
                 <p><strong>Purpose:</strong> {p.TravelRequest.PurposeOfTravel}</p>
-                <p>Please take action:</p>
-                <p><a href='{approveUrl}' style='display: inline-block; padding: 10px 15px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px;'>Approve Request</a></p>
-                <p><a href='{rejectUrl}' style='display: inline-block; padding: 10px 15px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;'>Reject Request</a></p>
-                <p>Thank you,<br/>Xpress Travel System</p>";
+                <p>Please click a link below to proceed to the confirmation page:</p>
+                <p><a href='{approveUrl}' target='_blank' style='display: inline-block; padding: 10px 15px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px;'>Review & Approve Request</a></p>
+                <p><a href='{rejectUrl}' target='_blank' style='display: inline-block; padding: 10px 15px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;'>Review & Reject Request</a></p>
+                <p>Thank you,<br/>Xpress Travel System</p>
+                </body></html>";
             return Task.FromResult((subject, body));
         }
 
         public Task<(string Subject, string HtmlBody)> GetDuHeadApprovalRequestEmailAsync(EmailTemplateParameters p)
         {
-            if (string.IsNullOrWhiteSpace(p.ActualRecipientEmail)) // This is the DU Head's email from RMT
-            {
-                return Task.FromResult(($"ERROR: Missing DU Head Email for TR {p.TravelRequest.RequestId}", "<p>Could not generate DU Head approval email: DU Head's email address is missing.</p>"));
-            }
+            if (string.IsNullOrWhiteSpace(p.ActualRecipientEmail)) { _logger.LogError("GetDuHeadApproval: ActualRecipientEmail missing for TR {ReqId}", p.TravelRequest.RequestId); return Task.FromResult(("ERROR", "Internal Error")); }
+            if (string.IsNullOrWhiteSpace(p.ActionBaseUrl)) { _logger.LogError("GetDuHeadApproval: ActionBaseUrl missing for TR {ReqId}", p.TravelRequest.RequestId); return Task.FromResult(("ERROR", "Internal Error")); }
 
             var subject = $"ACTION REQUIRED: DU Head Approval for TR {p.TravelRequest.RequestId}";
-            var approveUrl = $"{p.ActionBaseUrl}/duhead-approve?requestId={p.TravelRequest.RequestId}&actorEmail={Uri.EscapeDataString(p.ActualRecipientEmail)}";
-            var rejectUrl = $"{p.ActionBaseUrl}/duhead-reject?requestId={p.TravelRequest.RequestId}&actorEmail={Uri.EscapeDataString(p.ActualRecipientEmail)}";
-
-            var duHeadName = p.ProjectDetails.DuHeadName ?? "DU Head"; // Use RMT name or default
+            var approveUrl = $"{p.ActionBaseUrl.TrimEnd('/')}/confirm-action.html?action=duhead-approve&requestId={p.TravelRequest.RequestId}&intendedActor={Uri.EscapeDataString(p.ActualRecipientEmail)}";
+            var rejectUrl = $"{p.ActionBaseUrl.TrimEnd('/')}/confirm-action.html?action=duhead-reject&requestId={p.TravelRequest.RequestId}&intendedActor={Uri.EscapeDataString(p.ActualRecipientEmail)}";
+            var salutationName = GetSalutationDisplayName(p, p.ProjectDetails.DuHeadName ?? "DU Head");
 
             var body = $@"
-                <p>Hi {GetRecipientNameForSalutation(p.RecipientForSalutation, duHeadName)},</p>
-                <p>Travel request ({p.TravelRequest.RequestId}) for {p.Requester.EmployeeName} (Project: '{p.ProjectDetails.ProjectName}') has been approved by the manager and now requires your DU Head approval.</p>
-                <p>Please take action:</p>
-                <p><a href='{approveUrl}' style='display: inline-block; padding: 10px 15px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px;'>Approve (DU Head)</a></p>
-                <p><a href='{rejectUrl}' style='display: inline-block; padding: 10px 15px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;'>Reject (DU Head)</a></p>
-                <p>Thank you,<br/>Xpress Travel System</p>";
-            return Task.FromResult((subject, body));
-        }
-
-        public Task<(string Subject, string HtmlBody)> GetInformAdminForTicketOptionsEmailAsync(EmailTemplateParameters p)
-        {
-            var subject = $"ACTION REQUIRED: Provide Ticket Options for TR {p.TravelRequest.RequestId}";
-            var body = $@"
-                <p>Hi Admin Team,</p>
-                <p>Travel request ({p.TravelRequest.RequestId}) for {p.Requester.EmployeeName} (Project: '{p.ProjectDetails.ProjectName}') has been fully approved.</p>
-                <p>Please provide ticket options for this request via the admin portal/system.</p>
-                <p><strong>Destination:</strong> {p.TravelRequest.DestinationPlace}</p>
-                <p>Thank you,<br/>Xpress Travel System</p>";
+                <!DOCTYPE html><html><body style='font-family: Arial, sans-serif;'>
+                <p>Hi {salutationName},</p>
+                <p>Travel request ({p.TravelRequest.RequestId}) for {p.Requester.EmployeeName} (Project: '{p.ProjectDetails.ProjectName}') has been manager-approved and requires your DU Head approval.</p>
+                <p><a href='{approveUrl}' target='_blank' style='display: inline-block; padding: 10px 15px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px;'>Review & Approve (DU Head)</a></p>
+                <p><a href='{rejectUrl}' target='_blank' style='display: inline-block; padding: 10px 15px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 5px; margin-left: 10px;'>Review & Reject (DU Head)</a></p>
+                <p>Thank you,<br/>Xpress Travel System</p>
+                </body></html>";
             return Task.FromResult((subject, body));
         }
 
         public Task<(string Subject, string HtmlBody)> GetTicketOptionsForManagerEmailAsync(EmailTemplateParameters p)
         {
-            if (string.IsNullOrWhiteSpace(p.ActualRecipientEmail) || p.TicketOptions == null || !p.TicketOptions.Any())
-            {
-                return Task.FromResult(($"ERROR: Missing Manager Email or Options for TR {p.TravelRequest.RequestId}", "<p>Could not generate ticket options email: Recipient or options missing.</p>"));
-            }
+            if (string.IsNullOrWhiteSpace(p.ActualRecipientEmail) || p.TicketOptions == null || !p.TicketOptions.Any()) { _logger.LogError("GetTicketOptions: Params missing for TR {ReqId}", p.TravelRequest.RequestId); return Task.FromResult(("ERROR", "Internal Error")); }
+            if (string.IsNullOrWhiteSpace(p.ActionBaseUrl)) { _logger.LogError("GetTicketOptions: ActionBaseUrl missing for TR {ReqId}", p.TravelRequest.RequestId); return Task.FromResult(("ERROR", "Internal Error")); }
+
             var subject = $"ACTION REQUIRED: Select Ticket Option for TR {p.TravelRequest.RequestId}";
             var optionsHtml = new StringBuilder();
             foreach (var option in p.TicketOptions)
             {
-                var selectUrl = $"{p.ActionBaseUrl}/select-ticket?requestId={p.TravelRequest.RequestId}&actorEmail={Uri.EscapeDataString(p.ActualRecipientEmail)}&optionId={option.OptionId}";
-                optionsHtml.Append($"<li style='margin-bottom: 10px;'>{option.Description} - <a href='{selectUrl}' style='padding:5px 8px; background-color:#007bff; color:white; text-decoration:none; border-radius:3px;'>Select This Option</a></li>");
+                var selectUrl = $"{p.ActionBaseUrl.TrimEnd('/')}/confirm-action.html?action=select-ticket&requestId={p.TravelRequest.RequestId}&intendedActor={Uri.EscapeDataString(p.ActualRecipientEmail)}&optionId={option.OptionId}";
+                optionsHtml.Append($"<li style='margin-bottom: 10px;'>{option.Description} - <a href='{selectUrl}' target='_blank' style='padding:5px 8px; background-color:#007bff; color:white; text-decoration:none; border-radius:3px;'>Review & Select Option</a></li>");
             }
-
-            var managerName = p.ProjectDetails.ProjectManager ?? "Manager";
-
+            var salutationName = GetSalutationDisplayName(p, p.ProjectDetails.ProjectManager ?? "Manager");
             var body = $@"
-                <p>Hi {GetRecipientNameForSalutation(p.RecipientForSalutation, managerName)},</p>
-                <p>Ticket options are available for travel request ({p.TravelRequest.RequestId}) for {p.Requester.EmployeeName}. Please select one:</p>
+                 <!DOCTYPE html><html><body style='font-family: Arial, sans-serif;'>
+                <p>Hi {salutationName},</p>
+                <p>Ticket options are available for TR ({p.TravelRequest.RequestId}) for {p.Requester.EmployeeName}. Please select one:</p>
                 <ul style='list-style-type: none; padding-left: 0;'>{optionsHtml.ToString()}</ul>
-                <p>Thank you,<br/>Xpress Travel System</p>";
+                <p>Thank you,<br/>Xpress Travel System</p>
+                </body></html>";
             return Task.FromResult((subject, body));
         }
 
-        public Task<(string Subject, string HtmlBody)> GetRequestApprovedEmailAsync(EmailTemplateParameters p) // General approval to employee
+        // --- Informational Email Methods ---
+        public Task<(string Subject, string HtmlBody)> GetInformAdminForTicketOptionsEmailAsync(EmailTemplateParameters p)
+        {
+            var subject = $"ACTION REQUIRED: Provide Ticket Options for TR {p.TravelRequest.RequestId}";
+            var body = $@"
+                <!DOCTYPE html><html><body style='font-family: Arial, sans-serif;'>
+                <p>Hi Admin Team,</p>
+                <p>Travel request ({p.TravelRequest.RequestId}) for {p.Requester.EmployeeName} (Project: '{p.ProjectDetails.ProjectName}') has been fully approved.</p>
+                <p>Please provide ticket options for this request.</p><p>Destination: {p.TravelRequest.DestinationPlace}</p>
+                <p>Thank you,<br/>Xpress Travel System</p></body></html>";
+            return Task.FromResult((subject, body));
+        }
+
+        public Task<(string Subject, string HtmlBody)> GetRequestApprovedEmailAsync(EmailTemplateParameters p)
         {
             var subject = $"Travel Request {p.TravelRequest.RequestId} Approved";
             var body = $@"
-                <p>Hi {GetRecipientNameForSalutation(p.RecipientForSalutation, p.Requester.EmployeeName)},</p>
-                <p>Good news! Your travel request ({p.TravelRequest.RequestId}) for project '{p.ProjectDetails.ProjectName}' to {p.TravelRequest.DestinationPlace} has been approved by DU Head.</p>
+                <!DOCTYPE html><html><body style='font-family: Arial, sans-serif;'>
+                <p>Hi {GetSalutationDisplayName(p, p.Requester.EmployeeName)},</p>
+                <p>Good news! Your travel request ({p.TravelRequest.RequestId}) for project '{p.ProjectDetails.ProjectName}' to {p.TravelRequest.DestinationPlace} has been approved by the DU Head.</p>
                 <p>Admins will now work on providing ticket options.</p>
-                <p>Thank you,<br/>Xpress Travel System</p>";
+                <p>Thank you,<br/>Xpress Travel System</p></body></html>";
             return Task.FromResult((subject, body));
         }
 
@@ -131,10 +156,11 @@ namespace Xpress_backend_V2.Repository
         {
             var subject = $"Travel Request {p.TravelRequest.RequestId} Rejected";
             var body = $@"
-                <p>Hi {GetRecipientNameForSalutation(p.RecipientForSalutation, p.Requester.EmployeeName)},</p> 
+                <!DOCTYPE html><html><body style='font-family: Arial, sans-serif;'>
+                <p>Hi {GetSalutationDisplayName(p, p.Requester.EmployeeName)},</p> 
                 <p>We regret to inform you that travel request ({p.TravelRequest.RequestId}) for project '{p.ProjectDetails.ProjectName}' has been rejected by {rejectedBy}.</p>
                 {(string.IsNullOrWhiteSpace(comments) ? "" : $"<p><strong>Comments:</strong> {comments}</p>")}
-                <p>Thank you,<br/>Xpress Travel System</p>";
+                <p>Thank you,<br/>Xpress Travel System</p></body></html>";
             return Task.FromResult((subject, body));
         }
 
@@ -142,23 +168,24 @@ namespace Xpress_backend_V2.Repository
         {
             var subject = $"Ticket Booked for Travel Request {p.TravelRequest.RequestId}";
             var body = $@"
-                <p>Hi {GetRecipientNameForSalutation(p.RecipientForSalutation, p.Requester.EmployeeName)},</p> 
+                <!DOCTYPE html><html><body style='font-family: Arial, sans-serif;'>
+                <p>Hi {GetSalutationDisplayName(p, p.Requester.EmployeeName)},</p> 
                 <p>The ticket for travel request ({p.TravelRequest.RequestId}) to {p.TravelRequest.DestinationPlace} has been booked.</p>
-                <p><strong>Selected Option:</strong> {p.SelectedOptionDescription ?? "Details will be provided by the admin team."}</p>
-                <p>The admin team will share your itinerary and any other relevant documents shortly if applicable.</p>
-                <p>Thank you,<br/>Xpress Travel System</p>";
+                <p><strong>Selected Option:</strong> {p.SelectedOptionDescription ?? "Details to be provided by admin."}</p>
+                <p>The admin team will share your itinerary and documents shortly.</p>
+                <p>Thank you,<br/>Xpress Travel System</p></body></html>";
             return Task.FromResult((subject, body));
         }
 
         public Task<(string Subject, string HtmlBody)> GetGeneralNotificationEmailAsync(EmailTemplateParameters p, string notificationMessage)
         {
             var subject = $"Notification for Travel Request {p.TravelRequest.RequestId}";
-            // p.RecipientForSalutation might be null for a general admin email, or could be a specific person
             var body = $@"
-                <p>Hi {GetRecipientNameForSalutation(p.RecipientForSalutation, "Team")},</p>
-                <p>This is a notification regarding travel request {p.TravelRequest.RequestId} for {p.Requester.EmployeeName} (Project: '{p.ProjectDetails.ProjectName}').</p>
+                <!DOCTYPE html><html><body style='font-family: Arial, sans-serif;'>
+                <p>Hi {GetSalutationDisplayName(p, "Team")},</p>
+                <p>Notification for TR {p.TravelRequest.RequestId} ({p.Requester.EmployeeName}, Project: '{p.ProjectDetails.ProjectName}'):</p>
                 <p><strong>Message:</strong> {notificationMessage}</p>
-                <p>Thank you,<br/>Xpress Travel System</p>";
+                <p>Thank you,<br/>Xpress Travel System</p></body></html>";
             return Task.FromResult((subject, body));
         }
     }
