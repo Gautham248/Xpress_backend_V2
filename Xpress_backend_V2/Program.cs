@@ -5,8 +5,6 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
-using Xpress_backend_V2.Repositories;
-
 //using Xpress_backend_V2.Repositories;
 using Xpress_backend_V2.Repository;
 using Xpress_backend_V2.Services;
@@ -40,13 +38,9 @@ builder.Services.AddScoped<ICalendarTravelRequestRepository,CalendarTravelReques
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITravelRequestStatsRepository, TravelRequestStatsRepository>();
-
-builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDocumentService, DocumentRepository>();
-builder.Services.AddScoped<IDocumentStatusRepository, DocumentStatusRepository>();
-builder.Services.AddScoped<IProcessingTimeRepository, ProcessingTimeRepository>();
-builder.Services.AddScoped<IAirlineReportRepository, AirlineReportRepository>();
-builder.Services.AddScoped<ITravelAgencyStatRepository, TravelAgencyStatRepository>();
+
+
 builder.Services.AddAutoMapper(typeof(Program));
 
 // For CORS error resolve
