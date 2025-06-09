@@ -23,6 +23,7 @@ namespace Xpress_backend_V2.Data
         public DbSet<PassportDoc> PassportDocs { get; set; }
         public DbSet<VisaDoc> VisaDocs { get; set; }
 
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // This part remains unchanged

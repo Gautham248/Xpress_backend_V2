@@ -17,6 +17,7 @@ namespace Xpress_backend_V2.Controllers
         private readonly ITicketOptionServices _ticketOptionService;
         private readonly ITravelRequestServices _travelRequestService;
         private readonly IAuditLogServices _auditLogService;
+        private readonly IAuditLogHandlerService _auditLogHandlerService;
         private readonly IMapper _mapper;
 
         private const int VERIFIED_STATUS_ID = 2;
@@ -27,11 +28,13 @@ namespace Xpress_backend_V2.Controllers
             ITicketOptionServices ticketOptionService,
             ITravelRequestServices travelRequestService,
             IAuditLogServices auditLogService,
+            IAuditLogHandlerService auditLogHandler,
             IMapper mapper)
         {
             _ticketOptionService = ticketOptionService;
             _travelRequestService = travelRequestService;
             _auditLogService = auditLogService;
+            _auditLogHandlerService = auditLogHandler;
             _mapper = mapper;
         }
 
@@ -168,6 +171,7 @@ namespace Xpress_backend_V2.Controllers
                     ChangeDescription = $"Status changed to 'OptionsListed' after first ticket option creation."
                 };
                 await _auditLogService.AddAsync(auditLogStatusChange);
+                await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLogStatusChange);
             }
 
             var resultDto = _mapper.Map<TicketOptionResponseDTO>(ticketOption);
@@ -305,6 +309,7 @@ namespace Xpress_backend_V2.Controllers
                 Comments = selectionDto.Comments
             };
             await _auditLogService.AddAsync(auditLogStatusChange);
+            await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLogStatusChange);
 
 
             response.IsSuccess = true;

@@ -18,9 +18,12 @@ namespace Xpress_backend_V2.Controllers
         private readonly ApiDbContext _context;
         private readonly IMapper _mapper;
         private readonly IAuditLogServices _auditLogService;
+
         private readonly ILogger<TravelRequestController> _logger;
+        private readonly IAuditLogHandlerService _auditLogHandlerService;
         protected APIResponse _response;
         private readonly IHttpClientFactory _httpClientFactory;
+
 
         private const int DefaultInitialStatusId = 1;
         private const int TICKET_UPLOADED_STATUS_ID = 7;
@@ -28,6 +31,7 @@ namespace Xpress_backend_V2.Controllers
         public TravelRequestController(ITravelRequestServices travelRequestService,
             ApiDbContext context,
             IAuditLogServices auditLogService,
+            IAuditLogHandlerService auditLogHandler,
             IMapper mapper,
             ILogger<TravelRequestController> logger,
             IHttpClientFactory httpClientFactory)
@@ -37,6 +41,7 @@ namespace Xpress_backend_V2.Controllers
             _mapper = mapper;
             _context = context;
             _logger = logger;
+            _auditLogHandlerService = auditLogHandler;
             _response = new APIResponse();
             _httpClientFactory = httpClientFactory;
         }
@@ -213,15 +218,20 @@ namespace Xpress_backend_V2.Controllers
                 var travelRequestEntity = _mapper.Map<TravelRequest>(travelRequestCreateDto);
 
                 travelRequestEntity.OutboundDepartureDate = EnsureUtc(travelRequestCreateDto.OutboundDepartureDate);
-                travelRequestEntity.OutboundArrivalDate = EnsureUtc(travelRequestCreateDto.OutboundArrivalDate);
+                travelRequestEntity.OutboundArrivalDate = travelRequestCreateDto.OutboundArrivalDate.HasValue
+                ? EnsureUtc(travelRequestCreateDto.OutboundArrivalDate.Value): null;
+
                 travelRequestEntity.ReturnDepartureDate = EnsureUtc(travelRequestCreateDto.ReturnDepartureDate);
                 travelRequestEntity.ReturnArrivalDate = EnsureUtc(travelRequestCreateDto.ReturnArrivalDate);
 
-                travelRequestEntity.RequestId = Guid.NewGuid().ToString("N");
+                // Generate custom RequestId using the new format
+                travelRequestEntity.RequestId = GenerateCustomRequestId(travelRequestCreateDto);
                 travelRequestEntity.CurrentStatusId = DefaultInitialStatusId;
                 travelRequestEntity.IsActive = true;
+                travelRequestEntity.CreatedAt = DateTime.UtcNow;
 
-                if (travelRequestEntity.OutboundArrivalDate <= travelRequestEntity.OutboundDepartureDate)
+                if (travelRequestEntity.OutboundArrivalDate.HasValue &&
+                travelRequestEntity.OutboundArrivalDate.Value <= travelRequestEntity.OutboundDepartureDate)
                 {
                     ModelState.AddModelError(nameof(travelRequestCreateDto.OutboundArrivalDate), "Outbound arrival date must be after outbound departure date.");
                 }
@@ -234,7 +244,8 @@ namespace Xpress_backend_V2.Controllers
                     }
                     else
                     {
-                        if (travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate)
+                        if (travelRequestEntity.OutboundArrivalDate.HasValue &&
+                        travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate.Value)
                         {
                             ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnDepartureDate), "Return departure date must be after outbound arrival date.");
                         }
@@ -275,9 +286,11 @@ namespace Xpress_backend_V2.Controllers
                     OldStatusId = null,
                     NewStatusId = createdTravelRequest.CurrentStatusId,
                     ChangeDescription = "New travel request created.",
+                    ActionDate = DateTime.UtcNow,
                     Timestamp = createdTravelRequest.CreatedAt
                 };
                 await _auditLogService.CreateAuditLogAsync(auditLog);
+                await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLog);
 
                 var responseDto = _mapper.Map<TravelRequestResponseDTO>(createdTravelRequest);
 
@@ -294,6 +307,55 @@ namespace Xpress_backend_V2.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
             }
         }
+
+        
+        private string GenerateCustomRequestId(TravelRequestCreateDTO dto)
+        {
+            // 1. Travel Type (1 digit): 1 = International, 0 = Domestic
+            string travelType = dto.IsInternational ? "1" : "0";
+
+            // 2. Transport Mode (1 character): F = Flight, T = Train, B = Bus, C = Car/Taxi
+            string transportMode = GetTransportModeCode(dto.TravelModeId);
+
+            // 3. Trip Type (1 digit): 1 = Round Trip, 0 = One Way
+            string tripType = dto.IsRoundTrip ? "1" : "0";
+
+            // 4. Random Sequence (6 digits for better uniqueness)
+            string sequence = GenerateRandomSequence(6);
+
+            return $"{travelType}{transportMode}{tripType}{sequence}";
+        }
+
+        private string GetTransportModeCode(int travelModeId)
+        {
+            // You'll need to adjust these mappings based on your actual TravelModeId values
+            return travelModeId switch
+            {
+                1 => "F", 
+                2 => "T", 
+                3 => "B", 
+                4 => "C", 
+                _ => "F"  
+            };
+        }
+
+       
+        private string GenerateRandomSequence(int length)
+        {
+            var random = new Random();
+            var sequence = "";
+
+            for (int i = 0; i < length; i++)
+            {
+                sequence += random.Next(0, 10).ToString();
+            }
+
+            return sequence;
+        }
+
+
+
+
 
         [HttpPut("update/{requestId}")]
         [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status200OK)]
