@@ -6,6 +6,7 @@ using Xpress_backend_V2.Models;
 using Xpress_backend_V2.Models.DTO;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using System.Net.Sockets;
 
 namespace Xpress_backend_V2.Controllers
 {
@@ -125,6 +126,7 @@ namespace Xpress_backend_V2.Controllers
 
             var ticketOption = new TicketOption
             {
+                OptionId = Math.Abs(Guid.NewGuid().GetHashCode()),
                 RequestId = requestId,
                 CreatedByUserId = createDto.CreatedByUserId,
                 OptionDescription = createDto.OptionDescription,
@@ -248,11 +250,11 @@ namespace Xpress_backend_V2.Controllers
                 return NotFound(response);
             }
 
-            if (travelRequest.CurrentStatusId != OPTIONS_LISTED_STATUS_ID)
+            if (travelRequest.CurrentStatusId != OPTIONS_LISTED_STATUS_ID && travelRequest.CurrentStatusId != OPTION_SELECTED_STATUS_ID)
             {
                 response.IsSuccess = false;
                 response.StatusCode = HttpStatusCode.Conflict;
-                response.ErrorMessages.Add($"Travel request must be in 'OptionsListed' (Status ID: {OPTIONS_LISTED_STATUS_ID}) state to select an option. Current status ID: {travelRequest.CurrentStatusId}.");
+                response.ErrorMessages.Add($"Travel request must be in 'OptionsListed' (ID: {OPTIONS_LISTED_STATUS_ID}) or 'OptionSelected' (ID: {OPTION_SELECTED_STATUS_ID}) state to select an option. Current status ID: {travelRequest.CurrentStatusId}.");
                 return Conflict(response);
             }
 
@@ -292,27 +294,15 @@ namespace Xpress_backend_V2.Controllers
             travelRequest.UpdatedAt = DateTime.UtcNow;
             await _travelRequestService.UpdateAsync(travelRequest);
 
-            //var auditLogSelection = new AuditLog
-            //{
-            //    RequestId = requestId,
-            //    UserId = selectionDto.SelectingUserId,
-            //    ActionType = "TICKET_OPTION_SELECTED",
-            //    ChangeDescription = $"Ticket option {optionToSelect.OptionId} ('{optionToSelect.OptionDescription}') was selected.",
-            //    Comments = selectionDto.Comments
-            //};
-            //await _auditLogService.AddAsync(auditLogSelection);
-
-            // Audit Log for Travel Request Status Change due to option selection
             var auditLogStatusChange = new AuditLog
             {
                 RequestId = requestId,
-                //UserId = selectionDto.SelectingUserId,
-                UserId = 4,
+                UserId = selectionDto.SelectingUserId,
                 ActionType = "STATUS_UPDATED_OPTION_SELECTED",
                 OldStatusId = oldStatusId,
                 NewStatusId = travelRequest.CurrentStatusId,
-                ChangeDescription = $"Status changed to 'OptionSelected' after ticket option {optionToSelect.OptionId} was selected.",
-                Comments = selectionDto.Comments 
+                ChangeDescription = $"Status set to 'OptionSelected' after ticket option {optionToSelect.OptionId} was selected.",
+                Comments = selectionDto.Comments
             };
             await _auditLogService.AddAsync(auditLogStatusChange);
 
@@ -414,6 +404,93 @@ namespace Xpress_backend_V2.Controllers
             response.IsSuccess = true;
             response.StatusCode = HttpStatusCode.OK;
             response.Result = $"Ticket option {optionId} deleted successfully.";
+            return Ok(response);
+        }
+
+        // Delete all ticket options for a request id
+        [HttpDelete("all")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> DeleteAllTicketOptions(string requestId)
+        {
+            var response = new APIResponse();
+            var currentUserId = GetCurrentUserId(); // Implement this to get the actual user
+            //var currentUserId = 5; // Placeholder
+
+            var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
+            if (travelRequest == null)
+            {
+                response.IsSuccess = false;
+                response.StatusCode = HttpStatusCode.NotFound;
+                response.ErrorMessages.Add($"Travel request with ID '{requestId}' not found.");
+                return NotFound(response);
+            }
+
+            var ticketOptionsToDelete = await _ticketOptionService.GetByTravelRequestAsync(requestId);
+            if (ticketOptionsToDelete == null || !ticketOptionsToDelete.Any())
+            {
+                response.IsSuccess = true;
+                response.StatusCode = HttpStatusCode.OK;
+                response.Result = $"No ticket options found to delete for request '{requestId}'.";
+                return Ok(response);
+            }
+
+            int? oldTravelRequestStatusId = travelRequest.CurrentStatusId;
+            bool wasAnyOptionSelected = ticketOptionsToDelete.Any(o => o.IsSelected);
+            int selectedOptionIdIfAny = ticketOptionsToDelete.FirstOrDefault(o => o.IsSelected)?.OptionId ?? 0;
+
+            try
+            {
+                foreach (var option in ticketOptionsToDelete)
+                {
+                    await _ticketOptionService.DeleteAsync(option.OptionId);
+                }
+            }
+            catch (Exception ex)
+            {
+                response.IsSuccess = false;
+                response.StatusCode = HttpStatusCode.InternalServerError;
+                response.ErrorMessages.Add($"Failed to delete one or more ticket options for request '{requestId}': {ex.Message}");
+                return StatusCode((int)HttpStatusCode.InternalServerError, response);
+            }
+
+            bool statusChanged = false;
+            if (travelRequest.SelectedTicketOptionId.HasValue && ticketOptionsToDelete.Any(o => o.OptionId == travelRequest.SelectedTicketOptionId.Value))
+            {
+                travelRequest.SelectedTicketOptionId = null;
+                statusChanged = true;
+            }
+
+            if (travelRequest.CurrentStatusId != VERIFIED_STATUS_ID)
+            {
+                travelRequest.CurrentStatusId = VERIFIED_STATUS_ID;
+                statusChanged = true;
+            }
+
+            if (statusChanged)
+            {
+                travelRequest.UpdatedAt = DateTime.UtcNow;
+                await _travelRequestService.UpdateAsync(travelRequest);
+            }
+
+            if (statusChanged && oldTravelRequestStatusId.HasValue)
+            {
+                var auditLogStatusChange = new AuditLog
+                {
+                    RequestId = requestId,
+                    UserId = currentUserId,
+                    ActionType = "STATUS_UPDATED_ALL_OPTIONS_DELETED",
+                    OldStatusId = oldTravelRequestStatusId.Value,
+                    NewStatusId = travelRequest.CurrentStatusId,
+                    ChangeDescription = "Status changed after all ticket options were deleted."
+                };
+                await _auditLogService.AddAsync(auditLogStatusChange);
+            }
+
+            response.IsSuccess = true;
+            response.StatusCode = HttpStatusCode.OK;
+            response.Result = $"All {ticketOptionsToDelete.Count()} ticket options for request '{requestId}' deleted successfully.";
             return Ok(response);
         }
     }

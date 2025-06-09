@@ -13,7 +13,7 @@
         public string PurposeOfTravel { get; set; }
         public bool IsAccommodationRequired { get; set; }
         public bool IsVegetarian{ get; set; }
-        public bool IsDropOffRequired { get; set; }
-        public bool IsPickUpRequired { get; set; }
+        public string DropOffLocation { get; set; }
+        public string PickUpLocation { get; set; }
     }
 }

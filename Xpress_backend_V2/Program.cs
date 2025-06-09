@@ -130,6 +130,7 @@ builder.Services.AddAuthentication(options => {
     };
 });
 
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
