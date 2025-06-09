@@ -16,7 +16,9 @@ namespace Xpress_backend_V2.Repository
 
         public async Task<TravelRequest> GetByIdAsync(string requestId)
         {
+            // The critical fix: Eagerly load the AuditLogs collection.
             return await _context.TravelRequests
+                                 .Include(r => r.AuditLogs)
                                  .FirstOrDefaultAsync(r => r.RequestId == requestId);
         }
 
@@ -30,8 +32,10 @@ namespace Xpress_backend_V2.Repository
             _context.AuditLogs.Add(auditLog);
         }
 
+        // This implementation now perfectly matches the interface's Task<bool> signature.
         public async Task<bool> SaveChangesAsync()
         {
+            // Returns true if one or more records were saved, otherwise false.
             return await _context.SaveChangesAsync() > 0;
         }
     }
