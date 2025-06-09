@@ -250,11 +250,11 @@ namespace Xpress_backend_V2.Controllers
                 return NotFound(response);
             }
 
-            if (travelRequest.CurrentStatusId != OPTIONS_LISTED_STATUS_ID)
+            if (travelRequest.CurrentStatusId != OPTIONS_LISTED_STATUS_ID && travelRequest.CurrentStatusId != OPTION_SELECTED_STATUS_ID)
             {
                 response.IsSuccess = false;
                 response.StatusCode = HttpStatusCode.Conflict;
-                response.ErrorMessages.Add($"Travel request must be in 'OptionsListed' (Status ID: {OPTIONS_LISTED_STATUS_ID}) state to select an option. Current status ID: {travelRequest.CurrentStatusId}.");
+                response.ErrorMessages.Add($"Travel request must be in 'OptionsListed' (ID: {OPTIONS_LISTED_STATUS_ID}) or 'OptionSelected' (ID: {OPTION_SELECTED_STATUS_ID}) state to select an option. Current status ID: {travelRequest.CurrentStatusId}.");
                 return Conflict(response);
             }
 
@@ -294,27 +294,15 @@ namespace Xpress_backend_V2.Controllers
             travelRequest.UpdatedAt = DateTime.UtcNow;
             await _travelRequestService.UpdateAsync(travelRequest);
 
-            //var auditLogSelection = new AuditLog
-            //{
-            //    RequestId = requestId,
-            //    UserId = selectionDto.SelectingUserId,
-            //    ActionType = "TICKET_OPTION_SELECTED",
-            //    ChangeDescription = $"Ticket option {optionToSelect.OptionId} ('{optionToSelect.OptionDescription}') was selected.",
-            //    Comments = selectionDto.Comments
-            //};
-            //await _auditLogService.AddAsync(auditLogSelection);
-
-            // Audit Log for Travel Request Status Change due to option selection
             var auditLogStatusChange = new AuditLog
             {
                 RequestId = requestId,
-                //UserId = selectionDto.SelectingUserId,
-                UserId = 4,
+                UserId = selectionDto.SelectingUserId,
                 ActionType = "STATUS_UPDATED_OPTION_SELECTED",
                 OldStatusId = oldStatusId,
                 NewStatusId = travelRequest.CurrentStatusId,
-                ChangeDescription = $"Status changed to 'OptionSelected' after ticket option {optionToSelect.OptionId} was selected.",
-                Comments = selectionDto.Comments 
+                ChangeDescription = $"Status set to 'OptionSelected' after ticket option {optionToSelect.OptionId} was selected.",
+                Comments = selectionDto.Comments
             };
             await _auditLogService.AddAsync(auditLogStatusChange);
 

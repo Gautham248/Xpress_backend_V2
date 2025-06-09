@@ -20,6 +20,7 @@ namespace Xpress_backend_V2.Controllers
         private readonly IAuditLogServices _auditLogService;
         private readonly ILogger<TravelRequestController> _logger;
         protected APIResponse _response;
+        private readonly IHttpClientFactory _httpClientFactory;
 
         private const int DefaultInitialStatusId = 1;
         private const int TICKET_UPLOADED_STATUS_ID = 7;
@@ -28,7 +29,8 @@ namespace Xpress_backend_V2.Controllers
             ApiDbContext context,
             IAuditLogServices auditLogService,
             IMapper mapper,
-            ILogger<TravelRequestController> logger)
+            ILogger<TravelRequestController> logger,
+            IHttpClientFactory httpClientFactory)
         {
             _travelRequestService = travelRequestService;
             _auditLogService = auditLogService;
@@ -36,6 +38,7 @@ namespace Xpress_backend_V2.Controllers
             _context = context;
             _logger = logger;
             _response = new APIResponse();
+            _httpClientFactory = httpClientFactory;
         }
 
         private int GetCurrentUserId()
@@ -849,9 +852,6 @@ namespace Xpress_backend_V2.Controllers
                 _response.IsSuccess = true;
                 _response.StatusCode = HttpStatusCode.OK;
                 var responseDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
-                // If responseDto needs BookedAirlines and they aren't mapping, you might need to:
-                // var freshTravelRequest = await _travelRequestService.GetByIdAsync(requestId); // This should include BookedAirlines due to repo changes
-                // responseDto = _mapper.Map<TravelRequestResponseDTO>(freshTravelRequest);
                 _response.Result = responseDto;
                 return Ok(_response);
 
@@ -871,6 +871,85 @@ namespace Xpress_backend_V2.Controllers
                 _response.StatusCode = HttpStatusCode.InternalServerError;
                 _response.ErrorMessages.Add("An unexpected error occurred. Please try again later.");
                 return StatusCode((int)HttpStatusCode.InternalServerError, _response);
+            }
+        }
+
+        // To get distinct airlines
+        [HttpGet("airlines")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> GetAirlineNames()
+        {
+            var response = new APIResponse();
+            try
+            {
+                var airlineNames = await _context.Airlines
+                                                 .Select(a => a.AirlineName)
+                                                 .Distinct()
+                                                 .OrderBy(name => name)
+                                                 .ToListAsync();
+
+                response.IsSuccess = true;
+                response.StatusCode = HttpStatusCode.OK;
+                response.Result = airlineNames;
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while fetching airline names.");
+                response.IsSuccess = false;
+                response.StatusCode = HttpStatusCode.InternalServerError;
+                response.ErrorMessages.Add("An unexpected error occurred while fetching airline names.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, response);
+            }
+        }
+
+        // To download the ticket file
+        [HttpGet("{requestId}/downloadticket")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileStreamResult))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DownloadTicket(string requestId)
+        {
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                return BadRequest("Travel Request ID cannot be empty.");
+            }
+
+            try
+            {
+                // Find the URL for the ticket document
+                var ticketPath = await _context.TravelRequests
+                    .Where(tr => tr.RequestId == requestId)
+                    .Select(tr => tr.TicketDocumentPath)
+                    .FirstOrDefaultAsync();
+
+                if (string.IsNullOrWhiteSpace(ticketPath))
+                {
+                    return NotFound("No ticket document is available for this travel request.");
+                }
+
+                // Create an HttpClient to fetch the file from the URL
+                var httpClient = _httpClientFactory.CreateClient();
+                var response = await httpClient.GetAsync(ticketPath);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}", ticketPath, response.StatusCode);
+                    return StatusCode((int)response.StatusCode, $"Could not retrieve the file from the source. Status: {response.StatusCode}");
+                }
+
+                var fileStream = await response.Content.ReadAsStreamAsync();
+
+                var downloadFileName = $"Ticket-{requestId}.pdf";
+
+                return File(fileStream, "application/pdf", downloadFileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while processing ticket download for Request ID {RequestId}", requestId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An internal error occurred while processing your download request.");
             }
         }
     }
