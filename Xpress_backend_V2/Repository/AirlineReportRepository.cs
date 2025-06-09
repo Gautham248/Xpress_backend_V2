@@ -18,8 +18,7 @@ namespace Xpress_backend_V2.Repository
         {
             var inclusiveEndDate = endDate.Date.AddDays(1).AddTicks(-1);
 
-            // The query logic must be fundamentally changed. Instead of starting from TravelRequests,
-            // we start from the actual Airline bookings, which is now our primary entity for this report.
+           
             var report = await _context.Airlines
                 // 1. Filter for airlines that are actually linked to a travel request
                 //    and whose request falls within the specified date range.
