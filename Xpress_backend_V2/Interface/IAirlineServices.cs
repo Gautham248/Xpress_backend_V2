@@ -4,10 +4,7 @@ namespace Xpress_backend_V2.Interface
 {
     public interface IAirlineServices
     {
-        /// <summary>
-        /// Gets all individual flight bookings from the database.
-        /// WARNING: This does NOT return a distinct list of airline companies.
-        /// </summary>
+        
         Task<IEnumerable<Airline>> GetAllAsync();
 
         /// <summary>
@@ -15,10 +12,6 @@ namespace Xpress_backend_V2.Interface
         /// </summary>
         Task<Airline> GetByIdAsync(int airlineId);
 
-        /// <summary>
-        /// Adds a new flight booking to the database. The RequestId must be set
-        /// on the airline object before calling this method.
-        /// </summary>
         Task AddAsync(Airline airline);
 
         /// <summary>
@@ -31,12 +24,6 @@ namespace Xpress_backend_V2.Interface
         /// </summary>
         Task DeleteAsync(int airlineId);
 
-        // ----- NEW METHODS -----
-
-        /// <summary>
-        /// Gets a distinct, sorted list of airline company names.
-        /// Ideal for populating UI dropdowns.
-        /// </summary>
         Task<IEnumerable<string>> GetDistinctAirlineNamesAsync();
 
         /// <summary>

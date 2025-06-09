@@ -120,6 +120,49 @@ namespace Xpress_backend_V2.Controllers
             public bool IsRejection { get; init; }
         }
 
+        [HttpGet("ByUser/{userId:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<APIResponse>> GetActiveTravelRequestsByUserId(int userId)
+        {
+            var apiResponse = new APIResponse();
+
+            if (userId <= 0)
+            {
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                apiResponse.ErrorMessages.Add("User ID must be a positive integer.");
+                return BadRequest(apiResponse);
+            }
+
+            try
+            {
+                var travelRequests = await _travelRequestService.GetTravelRequestsByUserIdAsync(userId);
+
+                if (!travelRequests.Any())
+                {
+                    apiResponse.IsSuccess = false;
+                    apiResponse.StatusCode = HttpStatusCode.NotFound;
+                    apiResponse.ErrorMessages.Add("No active travel requests found for the specified user.");
+                    return NotFound(apiResponse);
+                }
+
+                apiResponse.IsSuccess = true;
+                apiResponse.StatusCode = HttpStatusCode.OK;
+                apiResponse.Result = travelRequests;
+                return Ok(apiResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while retrieving travel requests for UserId {UserId}.", userId);
+                apiResponse.IsSuccess = false;
+                apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+                apiResponse.ErrorMessages.Add("An error occurred while retrieving travel requests.");
+                return StatusCode(StatusCodes.Status500InternalServerError, apiResponse);
+            }
+        }
+
 
         [HttpGet("{requestId}/timeline")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -363,11 +406,52 @@ namespace Xpress_backend_V2.Controllers
                 .Include(t => t.TravelMode)
                 .Include(t => t.CurrentStatus)
                 .Include(t => t.SelectedTicketOption)
+                .Where(t => t.IsActive) // Assuming IsActive filter as mentioned in prior conversations
+                .Select(t => new TravelRequestDTO
+                {
+                    RequestId = t.RequestId,
+                    SourcePlace = t.SourcePlace,
+                    SourceCountry = t.SourceCountry,
+                    DestinationPlace = t.DestinationPlace,
+                    DestinationCountry = t.DestinationCountry,
+                    OutboundDepartureDate = t.OutboundDepartureDate,
+                    OutboundArrivalDate = t.OutboundArrivalDate,
+                    ReturnDepartureDate = t.ReturnDepartureDate,
+                    ReturnArrivalDate = t.ReturnArrivalDate,
+                    IsAccommodationRequired = t.IsAccommodationRequired,
+                    IsPickupRequired = t.IsPickUpRequired,
+                    IsDropoffRequired = t.IsDropOffRequired,
+                    PickupPlace = t.IsPickUpRequired ? t.PickUpPlace : null,
+                    DropoffPlace = t.IsDropOffRequired ? t.DropOffPlace : null,
+                    Comments = t.Comments,
+                    PurposeOfTravel = t.PurposeOfTravel,
+                    IsVegetarian = t.IsVegetarian,
+                    AttendedCct = t.AttendedCCT,
+                    TravelAgencyName = t.TravelAgencyName,
+                    TotalExpense = t.TotalExpense,
+                    UploadedTicketPdfPath = t.TicketDocumentPath,
+                    CreatedAt = t.CreatedAt,
+                    UpdatedAt = t.UpdatedAt,
+                    EmployeeName = t.User != null ? t.User.EmployeeName : "Unknown",
+                    IsInternational = t.IsInternational,
+                    IsRoundTrip = t.IsRoundTrip,
+                    ProjectName = t.Project != null ? t.Project.ProjectName : "Unknown",
+                    TravelModeName = t.TravelMode != null ? t.TravelMode.TravelModeName : "Unknown",
+                    CurrentStatusName = t.CurrentStatus != null ? t.CurrentStatus.StatusName : "Unknown",
+                    SelectedTicketOptionId = t.SelectedTicketOption != null ? t.SelectedTicketOptionId : null,
+                    DuId = t.Project != null ? t.Project.DuId : 0,
+                    ProjectManagerName = t.Project != null ? t.Project.ProjectManager : "Unknown"
+                })
                 .ToListAsync();
 
-            var travelRequestDtos = _mapper.Map<List<TravelRequestDTO>>(travelRequests);
-            return Ok(travelRequestDtos);
+            if (!travelRequests.Any())
+            {
+                return NotFound(new { message = "No active travel requests found." });
+            }
+
+            return Ok(travelRequests);
         }
+
 
         [HttpGet("ByProjectManager/{email}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
@@ -422,7 +506,10 @@ namespace Xpress_backend_V2.Controllers
                     ProjectName = tr.Project.ProjectName,
                     TravelModeName = tr.TravelMode.TravelModeName,
                     CurrentStatusName = tr.CurrentStatus.StatusName,
-                    SelectedTicketOptionId = tr.SelectedTicketOptionId
+                    SelectedTicketOptionId = tr.SelectedTicketOptionId,
+                    // Add DU ID and Project Manager Name from the Project entity
+                    DuId = tr.Project.DuId,
+                    ProjectManagerName = tr.Project.ProjectManager
                 })
                 .ToListAsync();
 
@@ -439,6 +526,8 @@ namespace Xpress_backend_V2.Controllers
             apiResponse.Result = travelRequests;
             return Ok(apiResponse);
         }
+
+
 
         [HttpGet("ByDUH/{email}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
@@ -493,7 +582,10 @@ namespace Xpress_backend_V2.Controllers
                     ProjectName = tr.Project.ProjectName,
                     TravelModeName = tr.TravelMode.TravelModeName,
                     CurrentStatusName = tr.CurrentStatus.StatusName,
-                    SelectedTicketOptionId = tr.SelectedTicketOptionId
+                    SelectedTicketOptionId = tr.SelectedTicketOptionId,
+                    // Add DU ID and Project Manager Name from the Project entity to match the first endpoint
+                    DuId = tr.Project.DuId,
+                    ProjectManagerName = tr.Project.ProjectManager
                 })
                 .ToListAsync();
 
@@ -510,7 +602,6 @@ namespace Xpress_backend_V2.Controllers
             apiResponse.Result = travelRequests;
             return Ok(apiResponse);
         }
-
         [HttpGet("{requestId}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]

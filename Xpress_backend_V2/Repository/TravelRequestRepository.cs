@@ -324,6 +324,27 @@ namespace Xpress_backend_V2.Repository
 
             return timelineDto;
         }
+
+
+        public async Task<IEnumerable<UserTravelRequestDTO>> GetTravelRequestsByUserIdAsync(int userId)
+        {
+            var travelRequests = await _context.TravelRequests
+                .Where(tr => tr.UserId == userId && tr.IsActive)
+                .Include(tr => tr.CurrentStatus)
+                .Select(tr => new UserTravelRequestDTO
+                {
+                    RequestId = tr.RequestId,
+                    Destination = $"{tr.DestinationPlace}, {tr.DestinationCountry}",
+                    OutboundDepartureDate = tr.OutboundDepartureDate,
+                    ReturnDepartureDate = tr.ReturnDepartureDate,
+                    PurposeOfTravel = tr.PurposeOfTravel,
+                    CurrentStatusName = tr.CurrentStatus.StatusName
+                })
+                .ToListAsync();
+
+            return travelRequests;
+        }
+
     }
 
 
