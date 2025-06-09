@@ -32,7 +32,7 @@ namespace Xpress_backend_V2.Controllers
             var response = new APIResponse();
             try
             {
-                // --- Core Logic ---
+                
                 var data = await _processingTimeRepository.GetAverageReviewToDispatchTimeAsync();
 
                 
