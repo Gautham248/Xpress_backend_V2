@@ -133,13 +133,12 @@ namespace Xpress_backend_V2.Repository
         //}
         public async Task<TravelRequest> CreateTravelRequestAsync(TravelRequest travelRequest)
         {
-            travelRequest.RequestId = Guid.NewGuid().ToString("N");
-            travelRequest.CreatedAt = DateTime.UtcNow;
             travelRequest.UpdatedAt = DateTime.UtcNow;
             await _context.TravelRequests.AddAsync(travelRequest);
             await _context.SaveChangesAsync();
             return travelRequest;
         }
+
         // Travel Info Join Query
         public async Task<List<TravelInfoDTO>> GetTravelInfoAsync(string requestId)
         {
@@ -157,6 +156,10 @@ namespace Xpress_backend_V2.Repository
                             RequestCreateDate = tr.CreatedAt,
                             PurposeOfTravel = tr.PurposeOfTravel,
                             IsAccommodationRequired = tr.IsAccommodationRequired,
+                            IsInternational = tr.IsInternational,
+                            IsVegetarian = tr.IsVegetarian,
+                            PickUpLocation = tr.IsPickUpRequired ? tr.PickUpPlace : null,
+                            DropOffLocation = tr.IsDropOffRequired ? tr.DropOffPlace : null
                         };
             return await query.ToListAsync();
         }
@@ -179,6 +182,7 @@ namespace Xpress_backend_V2.Repository
 
                 _logger.LogInformation("Successfully retrieved travel request with ID {RequestId}.", requestId);
                 return travelRequest;
+
             }
             catch (Exception ex)
             {

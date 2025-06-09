@@ -62,16 +62,16 @@ builder.Services.AddScoped<ITravelRequestRepo, TravelRequestRepo>();
 builder.Services.AddAutoMapper(typeof(Program));
 
 // For CORS error resolve
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowReactApp",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:5030", "http://localhost:5173") // Add React app ports
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
-});
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowReactApp",
+//        policy =>
+//        {
+//            policy.WithOrigins("http://localhost:5030", "http://localhost:5173") // Add React app ports
+//                  .AllowAnyHeader()
+//                  .AllowAnyMethod();
+//        });
+//});
 
 // Register the RmtDataSyncService as a hosted service
 //builder.Services.AddHostedService<RmtDataSyncService>();
@@ -140,6 +140,7 @@ builder.Services.AddAuthentication(options => {
     };
 });
 
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 

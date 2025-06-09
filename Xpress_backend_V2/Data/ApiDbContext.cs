@@ -22,7 +22,7 @@ namespace Xpress_backend_V2.Data
         public DbSet<AadharDoc> AadharDocs { get; set; }
         public DbSet<PassportDoc> PassportDocs { get; set; }
         public DbSet<VisaDoc> VisaDocs { get; set; }
-        public DbSet<EmailActionToken> EmailActionTokens { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

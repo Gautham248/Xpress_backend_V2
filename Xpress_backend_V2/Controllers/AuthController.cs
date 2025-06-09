@@ -63,6 +63,7 @@ namespace Xpress_backend_V2.Controllers
                 user_name = loggedInUser.EmployeeName,
                 role_name = loggedInUser.UserRole,
                 user_email=loggedInUser.EmployeeEmail,
+                user_du=loggedInUser.Department
 
             };
 

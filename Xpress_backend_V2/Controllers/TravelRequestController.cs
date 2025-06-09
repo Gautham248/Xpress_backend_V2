@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Security.Claims;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,16 +22,19 @@ namespace Xpress_backend_V2.Controllers
         private readonly ILogger<TravelRequestController> _logger;
         private readonly IAuditLogHandlerService _auditLogHandlerService;
         protected APIResponse _response;
+        private readonly IHttpClientFactory _httpClientFactory;
 
 
         private const int DefaultInitialStatusId = 1;
+        private const int TICKET_UPLOADED_STATUS_ID = 7;
 
         public TravelRequestController(ITravelRequestServices travelRequestService,
             ApiDbContext context,
             IAuditLogServices auditLogService,
             IAuditLogHandlerService auditLogHandler,
             IMapper mapper,
-            ILogger<TravelRequestController> logger)
+            ILogger<TravelRequestController> logger,
+            IHttpClientFactory httpClientFactory)
         {
             _travelRequestService = travelRequestService;
             _auditLogService = auditLogService;
@@ -39,6 +43,13 @@ namespace Xpress_backend_V2.Controllers
             _logger = logger;
             _auditLogHandlerService = auditLogHandler;
             _response = new APIResponse();
+            _httpClientFactory = httpClientFactory;
+        }
+
+        private int GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(userIdClaim, out var userId) ? userId : 0;
         }
 
         private DateTime EnsureUtc(DateTime dt)
@@ -142,9 +153,12 @@ namespace Xpress_backend_V2.Controllers
                     return NotFound(apiResponse);
                 }
 
+                // Sort travel requests by CreatedDate in descending order (most recent first)
+                var sortedTravelRequests = travelRequests.OrderByDescending(tr => tr.CreatedAt).ToList();
+
                 apiResponse.IsSuccess = true;
                 apiResponse.StatusCode = HttpStatusCode.OK;
-                apiResponse.Result = travelRequests;
+                apiResponse.Result = sortedTravelRequests;
                 return Ok(apiResponse);
             }
             catch (Exception ex)
@@ -156,7 +170,6 @@ namespace Xpress_backend_V2.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, apiResponse);
             }
         }
-
 
         [HttpGet("{requestId}/timeline")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -205,15 +218,20 @@ namespace Xpress_backend_V2.Controllers
                 var travelRequestEntity = _mapper.Map<TravelRequest>(travelRequestCreateDto);
 
                 travelRequestEntity.OutboundDepartureDate = EnsureUtc(travelRequestCreateDto.OutboundDepartureDate);
-                travelRequestEntity.OutboundArrivalDate = EnsureUtc(travelRequestCreateDto.OutboundArrivalDate);
+                travelRequestEntity.OutboundArrivalDate = travelRequestCreateDto.OutboundArrivalDate.HasValue
+                ? EnsureUtc(travelRequestCreateDto.OutboundArrivalDate.Value): null;
+
                 travelRequestEntity.ReturnDepartureDate = EnsureUtc(travelRequestCreateDto.ReturnDepartureDate);
                 travelRequestEntity.ReturnArrivalDate = EnsureUtc(travelRequestCreateDto.ReturnArrivalDate);
 
-                travelRequestEntity.RequestId = Guid.NewGuid().ToString("N");
+                // Generate custom RequestId using the new format
+                travelRequestEntity.RequestId = GenerateCustomRequestId(travelRequestCreateDto);
                 travelRequestEntity.CurrentStatusId = DefaultInitialStatusId;
                 travelRequestEntity.IsActive = true;
+                travelRequestEntity.CreatedAt = DateTime.UtcNow;
 
-                if (travelRequestEntity.OutboundArrivalDate <= travelRequestEntity.OutboundDepartureDate)
+                if (travelRequestEntity.OutboundArrivalDate.HasValue &&
+                travelRequestEntity.OutboundArrivalDate.Value <= travelRequestEntity.OutboundDepartureDate)
                 {
                     ModelState.AddModelError(nameof(travelRequestCreateDto.OutboundArrivalDate), "Outbound arrival date must be after outbound departure date.");
                 }
@@ -226,7 +244,8 @@ namespace Xpress_backend_V2.Controllers
                     }
                     else
                     {
-                        if (travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate)
+                        if (travelRequestEntity.OutboundArrivalDate.HasValue &&
+                        travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate.Value)
                         {
                             ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnDepartureDate), "Return departure date must be after outbound arrival date.");
                         }
@@ -288,6 +307,55 @@ namespace Xpress_backend_V2.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred. Please try again later.");
             }
         }
+
+        
+        private string GenerateCustomRequestId(TravelRequestCreateDTO dto)
+        {
+            // 1. Travel Type (1 digit): 1 = International, 0 = Domestic
+            string travelType = dto.IsInternational ? "1" : "0";
+
+            // 2. Transport Mode (1 character): F = Flight, T = Train, B = Bus, C = Car/Taxi
+            string transportMode = GetTransportModeCode(dto.TravelModeId);
+
+            // 3. Trip Type (1 digit): 1 = Round Trip, 0 = One Way
+            string tripType = dto.IsRoundTrip ? "1" : "0";
+
+            // 4. Random Sequence (6 digits for better uniqueness)
+            string sequence = GenerateRandomSequence(6);
+
+            return $"{travelType}{transportMode}{tripType}{sequence}";
+        }
+
+        private string GetTransportModeCode(int travelModeId)
+        {
+            // You'll need to adjust these mappings based on your actual TravelModeId values
+            return travelModeId switch
+            {
+                1 => "F", 
+                2 => "T", 
+                3 => "B", 
+                4 => "C", 
+                _ => "F"  
+            };
+        }
+
+       
+        private string GenerateRandomSequence(int length)
+        {
+            var random = new Random();
+            var sequence = "";
+
+            for (int i = 0; i < length; i++)
+            {
+                sequence += random.Next(0, 10).ToString();
+            }
+
+            return sequence;
+        }
+
+
+
+
 
         [HttpPut("update/{requestId}")]
         [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status200OK)]
@@ -598,7 +666,6 @@ namespace Xpress_backend_V2.Controllers
             apiResponse.Result = travelRequests;
             return Ok(apiResponse);
         }
-
         [HttpGet("{requestId}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
@@ -776,6 +843,269 @@ namespace Xpress_backend_V2.Controllers
             };
             _response.StatusCode = HttpStatusCode.OK;
             return Ok(_response);
+        }
+
+        // Feedback Submission
+        [HttpPut("{requestId}/travelfeedback")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> SubmitTravelFeedback(
+        string requestId,
+        [FromBody] SubmitTravelFeedbackDTO feedbackDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList();
+                return BadRequest(_response);
+            }
+
+            var authenticatedUserId = GetCurrentUserId();
+
+            var userIdForAudit = feedbackDto.SubmittingUserId;
+
+            var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
+            if (travelRequest == null)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.NotFound;
+                _response.ErrorMessages.Add($"Travel request with ID '{requestId}' not found.");
+                return NotFound(_response);
+            }
+
+            if (!string.IsNullOrEmpty(travelRequest.TravelFeedback))
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.Conflict;
+                _response.ErrorMessages.Add($"Feedback has already been submitted for this travel request.");
+                return Conflict(_response);
+            }
+
+            travelRequest.TravelFeedback = feedbackDto.FeedbackText;
+            travelRequest.UpdatedAt = DateTime.UtcNow;
+
+            try
+            {
+                await _travelRequestService.UpdateAsync(travelRequest);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating travel request with feedback for ID {RequestId}", requestId);
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add($"Error submitting feedback: {ex.Message}");
+                return StatusCode((int)HttpStatusCode.InternalServerError, _response);
+            }
+
+            var auditLogEntry = new AuditLog
+            {
+                RequestId = travelRequest.RequestId,
+                UserId = userIdForAudit,
+                ActionType = "TRAVEL_FEEDBACK_SUBMITTED",
+                ChangeDescription = $"Travel feedback submitted by user ID {userIdForAudit}.",
+                Comments = $"Feedback: \"{feedbackDto.FeedbackText.Substring(0, Math.Min(feedbackDto.FeedbackText.Length, 200))}\""
+            };
+
+            try
+            {
+                await _auditLogService.AddAsync(auditLogEntry);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding audit log for feedback submission on Request ID {RequestId}", requestId);
+            }
+
+            var updatedRequestDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
+            var auditLogDto = _mapper.Map<AuditLogResponseDTO>(auditLogEntry);
+
+            _response.IsSuccess = true;
+            _response.Result = new
+            {
+                Message = "Travel feedback submitted successfully.",
+                UpdatedRequest = updatedRequestDto,
+                AuditLog = auditLogDto
+            };
+            _response.StatusCode = HttpStatusCode.OK;
+            return Ok(_response);
+        }
+
+        // Upload Tickets Modal
+        [HttpPut("{requestId}/uploadticketdetails")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UploadTicketDetails(string requestId, [FromBody] TravelRequestUploadTicketDTO uploadTicketDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages = ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage)).ToList();
+                return BadRequest(_response);
+            }
+
+            try
+            {
+                var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
+                if (travelRequest == null)
+                {
+                    _response.IsSuccess = false;
+                    _response.StatusCode = HttpStatusCode.NotFound;
+                    _response.ErrorMessages.Add($"Travel request with ID {requestId} not found.");
+                    return NotFound(_response);
+                }
+
+                var oldStatusIdForAudit = travelRequest.CurrentStatusId;
+
+                if (uploadTicketDto.Airlines != null && uploadTicketDto.Airlines.Any())
+                {
+                    foreach (var airlineDto in uploadTicketDto.Airlines)
+                    {
+                        var newAirlineSegment = new Airline
+                        {
+                            AirlineId = Math.Abs(Guid.NewGuid().GetHashCode()),
+                            AirlineName = airlineDto.Name,
+                            AirlineExpense = (double)airlineDto.Cost,
+                            RequestId = requestId
+                        };
+
+                        _context.Airlines.Add(newAirlineSegment);
+                        _logger.LogInformation("Prepared airline segment: {AirlineName} for Request ID: {RequestId}", newAirlineSegment.AirlineName, requestId);
+                        
+                    }
+                }
+
+                travelRequest.TravelAgencyName = uploadTicketDto.TravelAgencyName;
+                travelRequest.TravelAgencyExpense = uploadTicketDto.AgencyBookingCharge;
+                travelRequest.TotalExpense = uploadTicketDto.TotalExpense;
+                travelRequest.TicketDocumentPath = uploadTicketDto.PdfFilePath;
+
+                travelRequest.UpdatedAt = DateTime.UtcNow;
+                travelRequest.CurrentStatusId = TICKET_UPLOADED_STATUS_ID;
+
+                _context.Entry(travelRequest).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+
+                var auditLog = new AuditLog
+                {
+                    RequestId = travelRequest.RequestId,
+                    UserId = travelRequest.UserId,
+                    ActionType = "TICKET_DETAILS_UPLOADED",
+                    OldStatusId = oldStatusIdForAudit,
+                    NewStatusId = travelRequest.CurrentStatusId,
+                    ChangeDescription = "Ticket details and airline information uploaded.",
+                    Comments = $"Agency: {travelRequest.TravelAgencyName}, Total: {travelRequest.TotalExpense}",
+                    Timestamp = DateTime.UtcNow
+                };
+                await _auditLogService.AddAsync(auditLog);
+
+                _response.IsSuccess = true;
+                _response.StatusCode = HttpStatusCode.OK;
+                var responseDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
+                _response.Result = responseDto;
+                return Ok(_response);
+
+            }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogError(dbEx, "Database update error occurred while uploading ticket details for Request ID {RequestId}.", requestId);
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add("A database error occurred. Please ensure data is valid and try again.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, _response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unexpected error occurred while uploading ticket details for Request ID {RequestId}.", requestId);
+                _response.IsSuccess = false;
+                _response.StatusCode = HttpStatusCode.InternalServerError;
+                _response.ErrorMessages.Add("An unexpected error occurred. Please try again later.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, _response);
+            }
+        }
+
+        // To get distinct airlines
+        [HttpGet("airlines")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(APIResponse))]
+        public async Task<ActionResult<APIResponse>> GetAirlineNames()
+        {
+            var response = new APIResponse();
+            try
+            {
+                var airlineNames = await _context.Airlines
+                                                 .Select(a => a.AirlineName)
+                                                 .Distinct()
+                                                 .OrderBy(name => name)
+                                                 .ToListAsync();
+
+                response.IsSuccess = true;
+                response.StatusCode = HttpStatusCode.OK;
+                response.Result = airlineNames;
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while fetching airline names.");
+                response.IsSuccess = false;
+                response.StatusCode = HttpStatusCode.InternalServerError;
+                response.ErrorMessages.Add("An unexpected error occurred while fetching airline names.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, response);
+            }
+        }
+
+        // To download the ticket file
+        [HttpGet("{requestId}/downloadticket")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileStreamResult))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DownloadTicket(string requestId)
+        {
+            if (string.IsNullOrWhiteSpace(requestId))
+            {
+                return BadRequest("Travel Request ID cannot be empty.");
+            }
+
+            try
+            {
+                // Find the URL for the ticket document
+                var ticketPath = await _context.TravelRequests
+                    .Where(tr => tr.RequestId == requestId)
+                    .Select(tr => tr.TicketDocumentPath)
+                    .FirstOrDefaultAsync();
+
+                if (string.IsNullOrWhiteSpace(ticketPath))
+                {
+                    return NotFound("No ticket document is available for this travel request.");
+                }
+
+                // Create an HttpClient to fetch the file from the URL
+                var httpClient = _httpClientFactory.CreateClient();
+                var response = await httpClient.GetAsync(ticketPath);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}", ticketPath, response.StatusCode);
+                    return StatusCode((int)response.StatusCode, $"Could not retrieve the file from the source. Status: {response.StatusCode}");
+                }
+
+                var fileStream = await response.Content.ReadAsStreamAsync();
+
+                var downloadFileName = $"Ticket-{requestId}.pdf";
+
+                return File(fileStream, "application/pdf", downloadFileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while processing ticket download for Request ID {RequestId}", requestId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An internal error occurred while processing your download request.");
+            }
         }
     }
 }
