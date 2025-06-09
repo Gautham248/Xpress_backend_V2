@@ -456,7 +456,6 @@ namespace Xpress_backend_V2.Controllers
             return Ok(travelRequests);
         }
 
-
         [HttpGet("ByProjectManager/{email}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
