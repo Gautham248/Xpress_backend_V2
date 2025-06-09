@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -8,11 +9,17 @@ using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Repositories;
 
 //using Xpress_backend_V2.Repositories;
+using Xpress_backend_V2.Models.Configuration;
 using Xpress_backend_V2.Repository;
 using Xpress_backend_V2.Services;
 using Xpress_backend_V2.Services.Interface;
 
+
 var builder = WebApplication.CreateBuilder(args);
+
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.Configure<ApplicationSettings>(builder.Configuration.GetSection("ApplicationSettings"));
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -31,7 +38,6 @@ builder.Services.AddScoped<ITravelModeServices, TravelModeRepository>();
 builder.Services.AddScoped<IAirlineReportRepository, AirlineReportRepository>();
 
 builder.Services.AddScoped<IRequestStatusServices, RequestStatusRepository>();
-builder.Services.AddScoped<INotificationServices, NotificationRepository>();
 builder.Services.AddScoped<IUserNotificationServices, UserNotificationRepository>();
 builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
 //builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
@@ -43,6 +49,10 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITravelRequestStatsRepository, TravelRequestStatsRepository>();
 builder.Services.AddScoped<IDocumentService, DocumentRepository>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+
+builder.Services.AddScoped<IAuditLogHandlerService, AuditLogHandlerService>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IProcessingTimeRepository, ProcessingTimeRepository>();
 builder.Services.AddScoped<IDocumentStatusRepository, DocumentStatusRepository>();
@@ -88,15 +98,15 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(option =>
 {
     option.SwaggerDoc("v1", new OpenApiInfo { Title = "JWTWebApplication", Version = "v1" });
-    option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        In = ParameterLocation.Header,
-        Description = "Please enter a valid token",
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        BearerFormat = "JWT",
-        Scheme = "Bearer"
-    });
+    //option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    //{
+    //    In = ParameterLocation.Header,
+    //    Description = "Please enter a valid token",
+    //    Name = "Authorization",
+    //    Type = SecuritySchemeType.Http,
+    //    BearerFormat = "JWT",
+    //    Scheme = "Bearer"
+    //});
     option.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {

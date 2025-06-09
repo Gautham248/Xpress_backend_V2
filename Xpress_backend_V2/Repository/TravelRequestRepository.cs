@@ -133,8 +133,6 @@ namespace Xpress_backend_V2.Repository
         //}
         public async Task<TravelRequest> CreateTravelRequestAsync(TravelRequest travelRequest)
         {
-            travelRequest.RequestId = Guid.NewGuid().ToString("N");
-            travelRequest.CreatedAt = DateTime.UtcNow;
             travelRequest.UpdatedAt = DateTime.UtcNow;
             await _context.TravelRequests.AddAsync(travelRequest);
             await _context.SaveChangesAsync();
@@ -161,7 +159,7 @@ namespace Xpress_backend_V2.Repository
                             IsInternational = tr.IsInternational,
                             IsVegetarian = tr.IsVegetarian,
                             PickUpLocation = tr.IsPickUpRequired ? tr.PickUpPlace : null,
-                            DropOffLocation = tr.IsDropOffRequired ? tr.DropOffPlace : null
+                            DropOffLocation = tr.IsDropOffRequired ? tr.DropOffPlace : null,
                         };
             return await query.ToListAsync();
         }
