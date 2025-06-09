@@ -104,7 +104,7 @@ namespace Xpress_backend_V2.Controllers
                 existingRequest.DestinationPlace = editDto.DestinationPlace;
                 existingRequest.DestinationCountry = editDto.DestinationCountry;
                 existingRequest.OutboundDepartureDate = editDto.OutboundDepartureDate.ToUniversalTime();
-                existingRequest.OutboundArrivalDate = editDto.OutboundArrivalDate.ToUniversalTime();
+                existingRequest.OutboundArrivalDate = editDto.OutboundArrivalDate?.ToUniversalTime();
                 existingRequest.ReturnDepartureDate = editDto.ReturnDepartureDate?.ToUniversalTime();
                 existingRequest.ReturnArrivalDate = editDto.ReturnArrivalDate?.ToUniversalTime();
                 existingRequest.IsAccommodationRequired = editDto.IsAccommodationRequired;

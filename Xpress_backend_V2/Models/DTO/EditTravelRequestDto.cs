@@ -31,8 +31,8 @@ namespace Xpress_backend_V2.Models.DTO
         [Required]
         public DateTime OutboundDepartureDate { get; set; }
 
-        [Required]
-        public DateTime OutboundArrivalDate { get; set; }
+     
+        public DateTime? OutboundArrivalDate { get; set; }
 
         public DateTime? ReturnDepartureDate { get; set; }
         public DateTime? ReturnArrivalDate { get; set; }
