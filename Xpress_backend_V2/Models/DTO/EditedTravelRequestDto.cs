@@ -1,66 +1,38 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace Xpress_backend_V2.Models.DTO
+﻿namespace Xpress_backend_V2.Models.DTO
 {
-    public class EditTravelRequestDto
+    public class EditedTravelRequestDto
     {
-        [Required]
+        public string? RequestId { get; set; }
+        public string? UserId { get; set; }
+        public int CurrentStatusId { get; set; }
+        public DateTime UpdatedAt { get; set; }
+
+        // Properties that were part of the edit
         public int TravelModeId { get; set; }
-
-        [Required]
         public bool IsInternational { get; set; }
-
-        [Required]
         public bool IsRoundTrip { get; set; }
-
-        [Required]
-        public string ProjectCode { get; set; }
-
-        [Required]
-        public string SourcePlace { get; set; }
-
-        [Required]
-        public string SourceCountry { get; set; }
-
-        [Required]
-        public string DestinationPlace { get; set; }
-
-        [Required]
-        public string DestinationCountry { get; set; }
-
-        [Required]
+        public string? ProjectCode { get; set; }
+        public string? SourcePlace { get; set; }
+        public string? SourceCountry { get; set; }
+        public string? DestinationPlace { get; set; }
+        public string? DestinationCountry { get; set; }
         public DateTime OutboundDepartureDate { get; set; }
-
-     
         public DateTime? OutboundArrivalDate { get; set; }
-
         public DateTime? ReturnDepartureDate { get; set; }
         public DateTime? ReturnArrivalDate { get; set; }
-
-        [Required]
         public bool IsAccommodationRequired { get; set; }
-
-        [Required]
         public bool IsDropOffRequired { get; set; }
         public string? DropOffPlace { get; set; }
-
-        [Required]
         public bool IsPickUpRequired { get; set; }
         public string? PickUpPlace { get; set; }
-
         public string? Comments { get; set; }
-
-        [Required]
-        public string PurposeOfTravel { get; set; }
-
-        [Required]
+        public string? PurposeOfTravel { get; set; }
         public bool IsVegetarian { get; set; }
         public string? FoodComment { get; set; }
-
-   
         public bool? AttendedCCT { get; set; }
-
         public string? LDCertificatePath { get; set; }
-    
-}
+
+        // A list of audit logs using our new DTO name
+        public List<EditedRequestAuditLogDto> AuditLogs { get; set; } = new List<EditedRequestAuditLogDto>();
+    }
 }

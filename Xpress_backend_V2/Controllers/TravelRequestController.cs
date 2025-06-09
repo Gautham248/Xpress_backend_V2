@@ -461,6 +461,7 @@ namespace Xpress_backend_V2.Controllers
             }
         }
 
+
         [HttpGet("travelrequests")]
         public async Task<ActionResult<IEnumerable<TravelRequestDTO>>> GetTravelRequests()
         {
@@ -470,7 +471,8 @@ namespace Xpress_backend_V2.Controllers
                 .Include(t => t.TravelMode)
                 .Include(t => t.CurrentStatus)
                 .Include(t => t.SelectedTicketOption)
-                .Where(t => t.IsActive) // Assuming IsActive filter as mentioned in prior conversations
+                .Where(t => t.IsActive)
+                .OrderByDescending(t => t.CreatedAt) // Sort by creation time, latest first
                 .Select(t => new TravelRequestDTO
                 {
                     RequestId = t.RequestId,
