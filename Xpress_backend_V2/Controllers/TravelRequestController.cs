@@ -148,9 +148,12 @@ namespace Xpress_backend_V2.Controllers
                     return NotFound(apiResponse);
                 }
 
+                // Sort travel requests by CreatedDate in descending order (most recent first)
+                var sortedTravelRequests = travelRequests.OrderByDescending(tr => tr.CreatedAt).ToList();
+
                 apiResponse.IsSuccess = true;
                 apiResponse.StatusCode = HttpStatusCode.OK;
-                apiResponse.Result = travelRequests;
+                apiResponse.Result = sortedTravelRequests;
                 return Ok(apiResponse);
             }
             catch (Exception ex)
@@ -162,7 +165,6 @@ namespace Xpress_backend_V2.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, apiResponse);
             }
         }
-
 
         [HttpGet("{requestId}/timeline")]
         [ProducesResponseType(StatusCodes.Status200OK)]

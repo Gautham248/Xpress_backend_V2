@@ -9,5 +9,7 @@
         public string PurposeOfTravel { get; set; }
         public string CurrentStatusName { get; set; }
         public int UserId { get; set; } // Added for completeness
+
+        public DateTime CreatedAt { get; set; }
     }
 }

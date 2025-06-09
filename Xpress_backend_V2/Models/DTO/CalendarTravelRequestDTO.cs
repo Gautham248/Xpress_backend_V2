@@ -5,7 +5,7 @@
         public string RequestId { get; set; }
         public string EmployeeName { get; set; }
         public DateTime OutboundDepartureDate { get; set; }
-        public DateTime OutboundArrivalDate { get; set; }
+        public DateTime? OutboundArrivalDate { get; set; }
         public DateTime? ReturnDepartureDate { get; set; }
         public DateTime? ReturnArrivalDate { get; set; }
         public string SourcePlace { get; set; }

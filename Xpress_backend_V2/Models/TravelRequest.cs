@@ -13,7 +13,7 @@
         public string DestinationPlace { get; set; }
         public string DestinationCountry { get; set; }
         public DateTime OutboundDepartureDate { get; set; } // Always UTC
-        public DateTime OutboundArrivalDate { get; set; } // Always UTC
+        public DateTime? OutboundArrivalDate { get; set; } // Always UTC
         public DateTime? ReturnDepartureDate { get; set; } // Always UTC, nullable
         public DateTime? ReturnArrivalDate { get; set; } // Always UTC, nullable
         public bool IsAccommodationRequired { get; set; }
