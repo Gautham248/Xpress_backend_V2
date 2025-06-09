@@ -18,7 +18,7 @@
         public bool IsDropoffRequired { get; set; }
 
         public string PickupPlace { get; set; }
-        public string DropoffPlace{ get; set; }
+        public string DropoffPlace { get; set; }
         public string Comments { get; set; }
         public string PurposeOfTravel { get; set; }
         public bool IsVegetarian { get; set; }
@@ -39,5 +39,9 @@
         public string TravelModeName { get; set; }
         public string CurrentStatusName { get; set; }
         public int? SelectedTicketOptionId { get; set; }
+
+        // New fields for DU ID and Project Manager Name
+        public int DuId { get; set; }
+        public string ProjectManagerName { get; set; }
     }
 }
