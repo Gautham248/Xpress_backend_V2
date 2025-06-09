@@ -1,4 +1,4 @@
-﻿// In Controllers/DocumentStatusController.cs
+﻿
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Net;
@@ -35,7 +35,6 @@ namespace Xpress_backend_V2.Controllers
                     return validationResult;
                 }
 
-                // MODIFIED: Only pass endDate to the repository
                 var data = await _documentStatusRepository.GetPassportStatusAsync(endDate);
 
                 response.Result = data;
@@ -66,7 +65,6 @@ namespace Xpress_backend_V2.Controllers
                     return validationResult;
                 }
 
-                // MODIFIED: Only pass endDate to the repository
                 var data = await _documentStatusRepository.GetVisaStatusAsync(endDate);
 
                 response.Result = data;

@@ -6,6 +6,9 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
+using Xpress_backend_V2.Repositories;
+
+//using Xpress_backend_V2.Repositories;
 using Xpress_backend_V2.Models.Configuration;
 using Xpress_backend_V2.Repository;
 using Xpress_backend_V2.Services;
@@ -51,6 +54,10 @@ builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 
 builder.Services.AddScoped<IAuditLogHandlerService, AuditLogHandlerService>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
+builder.Services.AddScoped<IProcessingTimeRepository, ProcessingTimeRepository>();
+builder.Services.AddScoped<IDocumentStatusRepository, DocumentStatusRepository>();
+builder.Services.AddScoped<ITravelAgencyStatRepository, TravelAgencyStatRepository>();
+builder.Services.AddScoped<ITravelRequestRepo, TravelRequestRepo>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 

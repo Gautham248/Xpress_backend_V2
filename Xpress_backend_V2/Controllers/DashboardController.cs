@@ -4,7 +4,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Xpress_backend_V2.Models.DTO;
 using Xpress_backend_V2.Models;
-using Xpress_backend_V2.Interface; // For the APIResponse class
+using Xpress_backend_V2.Interface; 
 
 namespace Xpress_backend_V2.Controllers
 {
@@ -38,7 +38,7 @@ namespace Xpress_backend_V2.Controllers
                     return validationResult;
                 }
 
-                // --- Core Logic ---
+               
                 var data = await _dashboardRepository.GetRequestStatusOverviewAsync(startDate, endDate);
                 response.Result = data;
                 response.IsSuccess = true;
@@ -73,7 +73,7 @@ namespace Xpress_backend_V2.Controllers
                     return validationResult;
                 }
 
-                // --- Core Logic ---
+               
                 var data = await _dashboardRepository.GetExpenseOverviewAsync(startDate, endDate);
                 response.Result = data;
                 response.IsSuccess = true;
@@ -107,7 +107,7 @@ namespace Xpress_backend_V2.Controllers
                     return validationResult;
                 }
 
-                // --- Core Logic ---
+                
                 var data = await _dashboardRepository.GetTripDetailsOverviewAsync(startDate, endDate);
                 response.Result = data;
                 response.IsSuccess = true;
@@ -152,7 +152,7 @@ namespace Xpress_backend_V2.Controllers
                 return BadRequest(response);
             }
 
-            // If all checks pass, return null to indicate success
+        
             return null;
         }
     }
