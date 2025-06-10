@@ -41,7 +41,6 @@ namespace Xpress_backend_V2.Repository
                 .Include(tr => tr.Project)
                 .Include(tr => tr.CurrentStatus)
                 .Include(tr => tr.SelectedTicketOption)
-                //.Include(tr => tr.Airline)
                 .FirstOrDefaultAsync(tr => tr.RequestId == requestId && tr.IsActive);
         }
 
