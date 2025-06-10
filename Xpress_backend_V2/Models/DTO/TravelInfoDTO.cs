@@ -15,7 +15,11 @@
         public bool IsVegetarian{ get; set; }
         public string DropOffLocation { get; set; }
         public string PickUpLocation { get; set; }
-        public string Feedback {  get; set; }
+        public string? TravelFeedback { get; set; }
         public List<CommentDTO> Comments { get; set; }
+
+        public string TravelerName { get; set; }    // To get initial comments
+        public string? InitialComments { get; set; }
+        public string? FoodComment { get; set; }
     }
 }

@@ -2,8 +2,8 @@
 {
     public class CommentDTO
     {
-        public string Comment { get; set; }
-        public string Author { get; set; }
+        public string EmployeeName { get; set; }
+        public string CommentText { get; set; }
         public DateTime Timestamp { get; set; }
     }
 }
