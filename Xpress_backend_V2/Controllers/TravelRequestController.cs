@@ -132,7 +132,6 @@ namespace Xpress_backend_V2.Controllers
         public async Task<ActionResult<APIResponse>> GetActiveTravelRequestsByUserId(int userId)
         {
             var apiResponse = new APIResponse();
-
             if (userId <= 0)
             {
                 apiResponse.IsSuccess = false;
@@ -140,11 +139,9 @@ namespace Xpress_backend_V2.Controllers
                 apiResponse.ErrorMessages.Add("User ID must be a positive integer.");
                 return BadRequest(apiResponse);
             }
-
             try
             {
                 var travelRequests = await _travelRequestService.GetTravelRequestsByUserIdAsync(userId);
-
                 if (!travelRequests.Any())
                 {
                     apiResponse.IsSuccess = false;
@@ -152,10 +149,8 @@ namespace Xpress_backend_V2.Controllers
                     apiResponse.ErrorMessages.Add("No active travel requests found for the specified user.");
                     return NotFound(apiResponse);
                 }
-
-                // Sort travel requests by CreatedDate in descending order (most recent first)
+                // Sort travel requests by CreatedAt in descending order (latest first - chronological order)
                 var sortedTravelRequests = travelRequests.OrderByDescending(tr => tr.CreatedAt).ToList();
-
                 apiResponse.IsSuccess = true;
                 apiResponse.StatusCode = HttpStatusCode.OK;
                 apiResponse.Result = sortedTravelRequests;

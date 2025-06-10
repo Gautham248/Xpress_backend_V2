@@ -341,7 +341,8 @@ namespace Xpress_backend_V2.Repository
                     OutboundDepartureDate = tr.OutboundDepartureDate,
                     ReturnDepartureDate = tr.ReturnDepartureDate,
                     PurposeOfTravel = tr.PurposeOfTravel,
-                    CurrentStatusName = tr.CurrentStatus.StatusName
+                    CurrentStatusName = tr.CurrentStatus.StatusName,
+                    CreatedAt=tr.CreatedAt,
                 })
                 .ToListAsync();
 
