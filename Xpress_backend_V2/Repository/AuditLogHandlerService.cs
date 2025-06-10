@@ -18,7 +18,7 @@ namespace Xpress_backend_V2.Services
         private readonly INotificationService _notificationService;
         private readonly IEmailTemplateService _emailTemplateService;
         private readonly ILogger<AuditLogHandlerService> _logger;
-        private readonly string _confirmationPageBaseUrl; // Base URL for confirm-action.html
+        private readonly string _confirmationPageBaseUrl; 
 
         // Status ID constants
         private const int StatusPendingReview = 1;
