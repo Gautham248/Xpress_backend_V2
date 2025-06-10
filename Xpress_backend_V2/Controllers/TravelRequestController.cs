@@ -202,6 +202,7 @@ namespace Xpress_backend_V2.Controllers
 
 
 
+        
         [HttpPost]
         [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -219,39 +220,49 @@ namespace Xpress_backend_V2.Controllers
 
                 travelRequestEntity.OutboundDepartureDate = EnsureUtc(travelRequestCreateDto.OutboundDepartureDate);
                 travelRequestEntity.OutboundArrivalDate = travelRequestCreateDto.OutboundArrivalDate.HasValue
-                ? EnsureUtc(travelRequestCreateDto.OutboundArrivalDate.Value): null;
+                    ? EnsureUtc(travelRequestCreateDto.OutboundArrivalDate.Value) : null;
 
-                travelRequestEntity.ReturnDepartureDate = EnsureUtc(travelRequestCreateDto.ReturnDepartureDate);
-                travelRequestEntity.ReturnArrivalDate = EnsureUtc(travelRequestCreateDto.ReturnArrivalDate);
+                travelRequestEntity.ReturnDepartureDate = travelRequestCreateDto.ReturnDepartureDate.HasValue
+                    ? EnsureUtc(travelRequestCreateDto.ReturnDepartureDate.Value) : null;
 
-                // Generate custom RequestId using the new format
+                travelRequestEntity.ReturnArrivalDate = travelRequestCreateDto.ReturnArrivalDate.HasValue
+                    ? EnsureUtc(travelRequestCreateDto.ReturnArrivalDate.Value) : null;
+
                 travelRequestEntity.RequestId = GenerateCustomRequestId(travelRequestCreateDto);
                 travelRequestEntity.CurrentStatusId = DefaultInitialStatusId;
                 travelRequestEntity.IsActive = true;
                 travelRequestEntity.CreatedAt = DateTime.UtcNow;
 
+
+
                 if (travelRequestEntity.OutboundArrivalDate.HasValue &&
-                travelRequestEntity.OutboundArrivalDate.Value <= travelRequestEntity.OutboundDepartureDate)
+                    travelRequestEntity.OutboundArrivalDate.Value <= travelRequestEntity.OutboundDepartureDate)
                 {
                     ModelState.AddModelError(nameof(travelRequestCreateDto.OutboundArrivalDate), "Outbound arrival date must be after outbound departure date.");
                 }
 
                 if (travelRequestEntity.IsRoundTrip)
                 {
-                    if (!travelRequestEntity.ReturnDepartureDate.HasValue || !travelRequestEntity.ReturnArrivalDate.HasValue)
+                    if (!travelRequestEntity.ReturnDepartureDate.HasValue)
                     {
-                        ModelState.AddModelError(nameof(travelRequestCreateDto.IsRoundTrip), "Return departure and arrival dates are required for round trips.");
+                        ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnDepartureDate), "Return departure date is required for a round trip.");
                     }
-                    else
+                    else 
                     {
+                        
                         if (travelRequestEntity.OutboundArrivalDate.HasValue &&
-                        travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate.Value)
+                            travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate.Value)
                         {
                             ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnDepartureDate), "Return departure date must be after outbound arrival date.");
                         }
-                        if (travelRequestEntity.ReturnArrivalDate.Value <= travelRequestEntity.ReturnDepartureDate.Value)
+
+                        
+                        if (travelRequestEntity.ReturnArrivalDate.HasValue)
                         {
-                            ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnArrivalDate), "Return arrival date must be after return departure date.");
+                            if (travelRequestEntity.ReturnArrivalDate.Value <= travelRequestEntity.ReturnDepartureDate.Value)
+                            {
+                                ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnArrivalDate), "Return arrival date must be after return departure date.");
+                            }
                         }
                     }
                 }
@@ -271,6 +282,7 @@ namespace Xpress_backend_V2.Controllers
                     ModelState.AddModelError(nameof(travelRequestCreateDto.DropOffPlace), "Drop-off place is required when drop-off is requested.");
                 }
 
+                
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
@@ -308,19 +320,14 @@ namespace Xpress_backend_V2.Controllers
             }
         }
 
-        
         private string GenerateCustomRequestId(TravelRequestCreateDTO dto)
         {
-            // 1. Travel Type (1 digit): 1 = International, 0 = Domestic
             string travelType = dto.IsInternational ? "1" : "0";
 
-            // 2. Transport Mode (1 character): F = Flight, T = Train, B = Bus, C = Car/Taxi
             string transportMode = GetTransportModeCode(dto.TravelModeId);
 
-            // 3. Trip Type (1 digit): 1 = Round Trip, 0 = One Way
             string tripType = dto.IsRoundTrip ? "1" : "0";
 
-            // 4. Random Sequence (6 digits for better uniqueness)
             string sequence = GenerateRandomSequence(6);
 
             return $"{travelType}{transportMode}{tripType}{sequence}";
@@ -328,7 +335,7 @@ namespace Xpress_backend_V2.Controllers
 
         private string GetTransportModeCode(int travelModeId)
         {
-            // You'll need to adjust these mappings based on your actual TravelModeId values
+
             return travelModeId switch
             {
                 1 => "F", 
