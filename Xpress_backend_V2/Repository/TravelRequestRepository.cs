@@ -248,47 +248,25 @@ namespace Xpress_backend_V2.Repository
         {
             _logger.LogInformation("Fetching timeline for RequestId: {RequestId}", requestId);
 
-            // Define status-changing action types (uppercase for comparison)
-            var statusChangingActions = new[]
-            {
-                "REQUEST_CREATED",
-                "STATUS_UPDATED",
-                "MANAGER_APPROVED",
-                "VERIFIED",
-                "STATUS_UPDATED_OPTIONS_LISTED",
-                "STATUS_UPDATED_OPTION_SELECTED",
-                "TICKET_OPTION_SELECTED",
-                "DU_HEAD_APPROVED",
-                "MANAGER_REJECTED",
-                "REQUEST_MODIFIED"
-            };
-
-            // Fetch audit logs
+            // Fetch all audit logs for the given RequestId
             var auditLogs = await _auditLogServices.GetByTravelRequestAsync(requestId);
             _logger.LogInformation("Found {Count} audit logs for RequestId: {RequestId}", auditLogs.Count(), requestId);
 
-            // Filter for status-changing actions
-            var filteredLogs = auditLogs
-                .Where(al => statusChangingActions.Contains(al.ActionType.ToUpper()))
-                .OrderBy(al => al.Timestamp)
-                .ToList();
-            _logger.LogInformation("Filtered to {Count} status-changing logs: {ActionTypes}",
-                filteredLogs.Count,
-                string.Join(", ", filteredLogs.Select(al => al.ActionType)));
-
-            if (!filteredLogs.Any())
+            if (!auditLogs.Any())
             {
-                _logger.LogWarning("No status-changing logs found for RequestId: {RequestId}", requestId);
+                _logger.LogWarning("No audit logs found for RequestId: {RequestId}", requestId);
                 return null;
             }
 
-            // Use earliest log for requestDate if REQUEST_CREATED is missing
-            var creationLog = filteredLogs.FirstOrDefault(al => al.ActionType.ToUpper() == "REQUEST_CREATED");
-            var requestDate = creationLog?.Timestamp ?? filteredLogs.Min(al => al.Timestamp);
+            // Sort logs by Timestamp to maintain chronological order
+            var orderedLogs = auditLogs.OrderBy(al => al.Timestamp).ToList();
 
-            // Get latest status (exclude Modified for overall status)
-            var latestLog = filteredLogs
-                .Where(al => al.NewStatusId.HasValue && al.NewStatus?.StatusName != "Modified")
+            // Use earliest log for requestDate
+            var requestDate = orderedLogs.Min(al => al.Timestamp);
+
+            // Get latest status
+            var latestLog = orderedLogs
+                .Where(al => al.NewStatusId.HasValue)
                 .OrderByDescending(al => al.Timestamp)
                 .FirstOrDefault();
 
@@ -297,15 +275,24 @@ namespace Xpress_backend_V2.Repository
                 Status = latestLog?.NewStatus?.StatusName ?? "PendingReview",
                 RequestDate = requestDate.ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture),
                 TravelerName = "Traveler",
-                TimelineEvents = filteredLogs.Select(al => new TimelineEventDTO
+                TimelineEvents = orderedLogs.Select(al => new TimelineEventDTO
                 {
                     Id = al.LogId.ToString(),
                     Type = al.ActionType.ToUpper() switch
                     {
                         "REQUEST_CREATED" => "Pending",
+                        "VERIFIED" => "Approved",
+                        "STATUS_UPDATED_OPTIONS_LISTED" => "Ticket Options Listed",
+                        "STATUS_UPDATED_OPTION_SELECTED" => "Ticket Option Selected",
+                        "TICKET_OPTION_EDITED" => "Ticket Option Edited",
+                        "Modified" => "Modified",
+                        "Status Change" => "Status Changed",
+                        "TICKET_OPTION_SELECTED" => "Ticket Option Selected",
+                        "MANAGER_APPROVED" => "Approved",
+                        "DU_HEAD_APPROVED" => "Approved",
+                        "MANAGER_REJECTED" => "Rejected",
                         "REQUEST_MODIFIED" => "Modified",
-                        "TICKET_OPTION_SELECTED" => "OptionSelected",
-                        _ => al.NewStatus?.StatusName ?? al.ActionType
+                        _ => al.NewStatus?.StatusName ?? al.ActionType // Fallback to ActionType if unmapped
                     },
                     Date = al.ActionDate == DateTime.MinValue
                         ? al.Timestamp.ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture)
@@ -322,6 +309,7 @@ namespace Xpress_backend_V2.Repository
 
             return timelineDto;
         }
+
 
 
         public async Task<IEnumerable<UserTravelRequestDTO>> GetTravelRequestsByUserIdAsync(int userId)
