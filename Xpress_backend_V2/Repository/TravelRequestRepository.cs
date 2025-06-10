@@ -41,7 +41,6 @@ namespace Xpress_backend_V2.Repository
                 .Include(tr => tr.Project)
                 .Include(tr => tr.CurrentStatus)
                 .Include(tr => tr.SelectedTicketOption)
-                //.Include(tr => tr.Airline)
                 .FirstOrDefaultAsync(tr => tr.RequestId == requestId && tr.IsActive);
         }
 
@@ -144,6 +143,7 @@ namespace Xpress_backend_V2.Repository
         {
             var query = from tr in _context.TravelRequests
                         join mode in _context.TravelModes on tr.TravelModeId equals mode.TravelModeId
+                        join traveler in _context.Users on tr.UserId equals traveler.UserId
                         where tr.RequestId == requestId
                         select new TravelInfoDTO
                         {
@@ -160,7 +160,24 @@ namespace Xpress_backend_V2.Repository
                             IsVegetarian = tr.IsVegetarian,
                             PickUpLocation = tr.IsPickUpRequired ? tr.PickUpPlace : null,
                             DropOffLocation = tr.IsDropOffRequired ? tr.DropOffPlace : null,
+
+                            TravelerName = traveler.EmployeeName,
+                            InitialComments = tr.Comments,
+                            FoodComment = tr.FoodComment,
+
+                            TravelFeedback = tr.TravelFeedback,
+                            Comments = (from log in _context.AuditLogs
+                                        join user in _context.Users on log.UserId equals user.UserId
+                                        where log.RequestId == requestId && log.Comments != null && log.Comments.Trim() != ""
+                                        orderby log.Timestamp ascending
+                                        select new CommentDTO
+                                        {
+                                            EmployeeName = user.EmployeeName,
+                                            CommentText = log.Comments,
+                                            Timestamp = log.Timestamp
+                                        }).ToList()
                         };
+
             return await query.ToListAsync();
         }
 
