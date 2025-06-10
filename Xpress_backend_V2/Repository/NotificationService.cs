@@ -52,9 +52,7 @@ namespace Xpress_backend_V2.Repository
                 emailMessage.Body = new TextPart(TextFormat.Html) { Text = htmlBody };
 
                 using var smtpClient = new SmtpClient();
-                // For development with self-signed certificates on a local SMTP server, you might need this:
-                // smtpClient.ServerCertificateValidationCallback = (s, c, h, e) => true;
-                // However, for production or standard SMTP servers (like Gmail), this is not needed and insecure.
+               
 
                 await smtpClient.ConnectAsync(_emailSettings.SmtpHost, _emailSettings.SmtpPort, _emailSettings.EnableSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None);
                 await smtpClient.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
@@ -66,7 +64,7 @@ namespace Xpress_backend_V2.Repository
             {
                 _logger.LogError(ex, "Error sending email to {Recipients} with subject '{Subject}'. From: {FromEmail}, Host: {SmtpHost}, Port: {SmtpPort}, SSL: {EnableSsl}. Check SMTP settings and credentials.",
                     string.Join(",", validEmails), subject, _emailSettings.FromEmail, _emailSettings.SmtpHost, _emailSettings.SmtpPort, _emailSettings.EnableSsl);
-                // Consider rethrowing or implementing a retry mechanism for critical notifications
+
             }
         }
     }

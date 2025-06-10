@@ -102,7 +102,7 @@ namespace Xpress_backend_V2.Controllers
                 return BadRequest(_response);
             }
 
-            // Validate requestId from DTO
+            
             if (string.IsNullOrWhiteSpace(auditLogDto.RequestId))
             {
                 _response.IsSuccess = false;
@@ -111,7 +111,7 @@ namespace Xpress_backend_V2.Controllers
                 return BadRequest(_response);
             }
 
-            // 1. Validate TravelRequest existence
+            
             var travelRequest = await _travelRequestService.GetByIdAsync(auditLogDto.RequestId);
             if (travelRequest == null)
             {
@@ -121,10 +121,10 @@ namespace Xpress_backend_V2.Controllers
                 return NotFound(_response);
             }
 
-            // Map from DTO to entity (requestId is already in the DTO)
+            
             var auditLogEntry = _mapper.Map<AuditLog>(auditLogDto);
 
-            // Generate ChangeDescription
+            
             if (!string.IsNullOrWhiteSpace(auditLogDto.CustomChangeDescription))
             {
                 auditLogEntry.ChangeDescription = auditLogDto.CustomChangeDescription;
