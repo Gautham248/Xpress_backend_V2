@@ -159,7 +159,7 @@ namespace Xpress_backend_V2.Repository
                             IsInternational = tr.IsInternational,
                             IsVegetarian = tr.IsVegetarian,
                             PickUpLocation = tr.IsPickUpRequired ? tr.PickUpPlace : null,
-                            DropOffLocation = tr.IsDropOffRequired ? tr.DropOffPlace : null
+                            DropOffLocation = tr.IsDropOffRequired ? tr.DropOffPlace : null,
                         };
             return await query.ToListAsync();
         }

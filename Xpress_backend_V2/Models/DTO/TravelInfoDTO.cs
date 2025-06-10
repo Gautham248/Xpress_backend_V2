@@ -15,5 +15,7 @@
         public bool IsVegetarian{ get; set; }
         public string DropOffLocation { get; set; }
         public string PickUpLocation { get; set; }
+        public string Feedback {  get; set; }
+        public List<CommentDTO> Comments { get; set; }
     }
 }
