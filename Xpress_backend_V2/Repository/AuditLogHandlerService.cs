@@ -33,7 +33,8 @@ namespace Xpress_backend_V2.Services
             ApiDbContext context,
             INotificationService notificationService,
             IEmailTemplateService emailTemplateService,
-            IOptions<ApplicationSettings> appSettings, // This BaseUrl should be for the FRONTEND
+            IOptions<ApplicationSettings> appSettings,
+             IOptions<FrontendSettings> frontendSettings,
             ILogger<AuditLogHandlerService> logger)
         {
             _context = context;
@@ -41,18 +42,26 @@ namespace Xpress_backend_V2.Services
             _emailTemplateService = emailTemplateService;
             _logger = logger;
 
-            // CRITICAL: appSettings.Value.BaseUrl from appsettings.json (ApplicationSettings:BaseUrl)
-            // MUST be the base URL of your React app where confirm-action.html is served.
-            // e.g., "http://localhost:5173" or "http://localhost:3000"
-            _confirmationPageBaseUrl = appSettings.Value.BaseUrl;
 
-            _logger.LogInformation("AuditLogHandlerService: _confirmationPageBaseUrl (for email links) initialized to: '{Url}'", _confirmationPageBaseUrl);
+            if (frontendSettings == null || frontendSettings.Value == null || string.IsNullOrWhiteSpace(frontendSettings.Value.ConfirmationPageBaseUrl))
+            {
+                _logger.LogError("CRITICAL CONFIGURATION ERROR: FrontendSettings:ConfirmationPageBaseUrl is missing or empty in appsettings.json. Email action links will be broken.");
+                _confirmationPageBaseUrl = "http://ERROR_FRONTEND_URL_NOT_CONFIGURED"; 
+            }
+            else
+            {
+                _confirmationPageBaseUrl = frontendSettings.Value.ConfirmationPageBaseUrl; 
+            }
+
+            _logger.LogInformation("AuditLogHandlerService: _confirmationPageBaseUrl (for email links to frontend) initialized to: '{Url}'", _confirmationPageBaseUrl);
+            // Keep the validation check for http
             if (string.IsNullOrWhiteSpace(_confirmationPageBaseUrl) || !_confirmationPageBaseUrl.StartsWith("http"))
             {
-                _logger.LogError("CRITICAL CONFIGURATION ERROR: AuditLogHandlerService._confirmationPageBaseUrl is invalid or not configured in appsettings.json (ApplicationSettings:BaseUrl). It must be the full base URL of your frontend application (e.g., http://localhost:5173). Current value: '{Url}'", _confirmationPageBaseUrl);
-                // This will cause all action links in emails to be broken.
+                _logger.LogError("CRITICAL CONFIGURATION ERROR (Post-check): AuditLogHandlerService._confirmationPageBaseUrl is invalid. It must be the full base URL of your frontend application (e.g., http://localhost:5173). Current value: '{Url}'", _confirmationPageBaseUrl);
             }
         }
+            
+        
 
         public async Task ProcessAuditLogEntryAsync(AuditLog auditLog)
         {
@@ -190,9 +199,6 @@ namespace Xpress_backend_V2.Services
             else { _logger.LogInformation("No active admin users to notify for TR {TRID}.", p.TravelRequest.RequestId); }
         }
 
-        // Copy the rest of the Handle... methods from the "send full auditloghandlerservice" response,
-        // ensuring they use RMT.ProjectManager and RMT.DuHeadName for placeholder user names.
-        // For brevity, I'm not repeating all of them here but the pattern is the same as HandleRequestSubmitted.
         private async Task HandleManagerApproved(EmailTemplateParameters p, string duHeadActualEmail, User duHeadUserForSalutation, List<User> admins)
         {
             _logger.LogInformation("HandleManagerApproved for TR {TRID}.", p.TravelRequest.RequestId);
