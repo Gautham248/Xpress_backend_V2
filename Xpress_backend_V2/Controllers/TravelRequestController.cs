@@ -525,7 +525,6 @@ namespace Xpress_backend_V2.Controllers
             return Ok(travelRequests);
         }
 
-
         [HttpGet("ByProjectManager/{email}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
@@ -533,7 +532,6 @@ namespace Xpress_backend_V2.Controllers
         public async Task<ActionResult<APIResponse>> GetActiveTravelRequestsByProjectManager(string email)
         {
             var apiResponse = new APIResponse();
-
             if (string.IsNullOrWhiteSpace(email))
             {
                 apiResponse.IsSuccess = false;
@@ -541,13 +539,13 @@ namespace Xpress_backend_V2.Controllers
                 apiResponse.ErrorMessages.Add("Project manager email is required.");
                 return BadRequest(apiResponse);
             }
-
             var travelRequests = await _context.TravelRequests
                 .Where(tr => tr.Project.ProjectManagerEmail == email && tr.IsActive)
                 .Include(tr => tr.Project)
                 .Include(tr => tr.TravelMode)
                 .Include(tr => tr.CurrentStatus)
                 .Include(tr => tr.User)
+                .OrderByDescending(tr => tr.CreatedAt) // Added sorting by CreatedAt in descending order
                 .Select(tr => new TravelRequestDTO
                 {
                     RequestId = tr.RequestId,
@@ -585,7 +583,6 @@ namespace Xpress_backend_V2.Controllers
                     ProjectManagerName = tr.Project.ProjectManager
                 })
                 .ToListAsync();
-
             if (!travelRequests.Any())
             {
                 apiResponse.IsSuccess = false;
@@ -593,14 +590,11 @@ namespace Xpress_backend_V2.Controllers
                 apiResponse.ErrorMessages.Add("No active travel requests found for the specified project manager.");
                 return NotFound(apiResponse);
             }
-
             apiResponse.IsSuccess = true;
             apiResponse.StatusCode = HttpStatusCode.OK;
             apiResponse.Result = travelRequests;
             return Ok(apiResponse);
         }
-
-
 
         [HttpGet("ByDUH/{email}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
@@ -609,7 +603,6 @@ namespace Xpress_backend_V2.Controllers
         public async Task<ActionResult<APIResponse>> GetActiveTravelRequestsByDUHead(string email)
         {
             var apiResponse = new APIResponse();
-
             if (string.IsNullOrWhiteSpace(email))
             {
                 apiResponse.IsSuccess = false;
@@ -617,13 +610,13 @@ namespace Xpress_backend_V2.Controllers
                 apiResponse.ErrorMessages.Add("DU Head email is required.");
                 return BadRequest(apiResponse);
             }
-
             var travelRequests = await _context.TravelRequests
                 .Where(tr => tr.Project.DuHeadEmail == email && tr.IsActive)
                 .Include(tr => tr.Project)
                 .Include(tr => tr.TravelMode)
                 .Include(tr => tr.CurrentStatus)
                 .Include(tr => tr.User)
+                .OrderByDescending(tr => tr.CreatedAt) // Added sorting by CreatedAt in descending order
                 .Select(tr => new TravelRequestDTO
                 {
                     RequestId = tr.RequestId,
@@ -661,7 +654,6 @@ namespace Xpress_backend_V2.Controllers
                     ProjectManagerName = tr.Project.ProjectManager
                 })
                 .ToListAsync();
-
             if (!travelRequests.Any())
             {
                 apiResponse.IsSuccess = false;
@@ -669,12 +661,13 @@ namespace Xpress_backend_V2.Controllers
                 apiResponse.ErrorMessages.Add("No active travel requests found for the specified DU Head.");
                 return NotFound(apiResponse);
             }
-
             apiResponse.IsSuccess = true;
             apiResponse.StatusCode = HttpStatusCode.OK;
             apiResponse.Result = travelRequests;
             return Ok(apiResponse);
         }
+
+
         [HttpGet("{requestId}")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(APIResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(APIResponse))]
