@@ -3,6 +3,7 @@ using System.Security.Claims;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Xpress_backend_V2.BackgroundServices;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
@@ -15,12 +16,15 @@ namespace Xpress_backend_V2.Controllers
     public class TravelRequestController : ControllerBase
     {
         private readonly ITravelRequestServices _travelRequestService;
+       
         private readonly ApiDbContext _context;
         private readonly IMapper _mapper;
+
         private readonly IAuditLogServices _auditLogService;
 
         private readonly ILogger<TravelRequestController> _logger;
-        private readonly IAuditLogHandlerService _auditLogHandlerService;
+        //private readonly IAuditLogHandlerService _auditLogHandlerService;
+        private readonly IBackgroundTaskQueue _taskQueue;
         protected APIResponse _response;
         private readonly IHttpClientFactory _httpClientFactory;
 
@@ -30,18 +34,21 @@ namespace Xpress_backend_V2.Controllers
 
         public TravelRequestController(ITravelRequestServices travelRequestService,
             ApiDbContext context,
+            IBackgroundTaskQueue taskQueue,
             IAuditLogServices auditLogService,
-            IAuditLogHandlerService auditLogHandler,
+            //IAuditLogHandlerService auditLogHandler,
             IMapper mapper,
+
             ILogger<TravelRequestController> logger,
             IHttpClientFactory httpClientFactory)
         {
             _travelRequestService = travelRequestService;
             _auditLogService = auditLogService;
             _mapper = mapper;
+            _taskQueue = taskQueue;
             _context = context;
             _logger = logger;
-            _auditLogHandlerService = auditLogHandler;
+            //_auditLogHandlerService = auditLogHandler;
             _response = new APIResponse();
             _httpClientFactory = httpClientFactory;
         }
@@ -297,7 +304,8 @@ namespace Xpress_backend_V2.Controllers
                     Timestamp = createdTravelRequest.CreatedAt
                 };
                 await _auditLogService.CreateAuditLogAsync(auditLog);
-                await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLog);
+                //await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLog);
+                await _taskQueue.QueueBackgroundWorkItemAsync(auditLog.LogId);
 
                 var responseDto = _mapper.Map<TravelRequestResponseDTO>(createdTravelRequest);
 

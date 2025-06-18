@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Npgsql;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
@@ -8,10 +10,12 @@ namespace Xpress_backend_V2.Repository
     public class RMTRepository : IRMTServices
     {
         private readonly ApiDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public RMTRepository(ApiDbContext context)
+        public RMTRepository(ApiDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         public async Task<IEnumerable<RMT>> GetAllAsync()
@@ -61,10 +65,23 @@ namespace Xpress_backend_V2.Repository
 
         public async Task<List<string>> GetAllProjectCodesAsync()
         {
-            return await _context.RMTs
-                .Select(r => r.ProjectCode)
-                .Distinct()
-                .ToListAsync();
+            var projectCodes = new List<string>();
+
+            var connectionString = _configuration.GetConnectionString("DefaultConnection");
+
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            await using var command = new NpgsqlCommand("SELECT * FROM get_project_codes();", connection);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                projectCodes.Add(reader.GetString(0));
+            }
+
+            return projectCodes;
         }
     }
 }
