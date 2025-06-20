@@ -65,23 +65,10 @@ namespace Xpress_backend_V2.Repository
 
         public async Task<List<string>> GetAllProjectCodesAsync()
         {
-            var projectCodes = new List<string>();
-
-            var connectionString = _configuration.GetConnectionString("DefaultConnection");
-
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
-
-            await using var command = new NpgsqlCommand("SELECT * FROM get_project_codes();", connection);
-
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
-            {
-                projectCodes.Add(reader.GetString(0));
-            }
-
-            return projectCodes;
+            return await _context.RMTs
+                .Select(r => r.ProjectCode)
+                .Distinct()
+                .ToListAsync();
         }
     }
 }
