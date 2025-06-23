@@ -30,25 +30,24 @@ namespace Xpress_backend_V2.Services
         private const int StatusRejected = 12;
 
         public AuditLogHandlerService(
-            ApiDbContext context,
-            INotificationService notificationService,
-            IEmailTemplateService emailTemplateService,
-            IOptions<ApplicationSettings> appSettings, 
-            ILogger<AuditLogHandlerService> logger)
+    ApiDbContext context,
+    INotificationService notificationService,
+    IEmailTemplateService emailTemplateService,
+    IOptions<ApplicationSettings> appSettings,
+    ILogger<AuditLogHandlerService> logger)
         {
             _context = context;
             _notificationService = notificationService;
             _emailTemplateService = emailTemplateService;
             _logger = logger;
 
+            if (appSettings == null || appSettings.Value == null || string.IsNullOrWhiteSpace(appSettings.Value.BaseUrl))
+            {
+                _logger.LogCritical("CRITICAL CONFIGURATION ERROR: ApplicationSettings:BaseUrl is not configured in appsettings.json.");
+                throw new InvalidOperationException("ApplicationSettings:BaseUrl is not configured in appsettings.json.");
+            }
 
             _confirmationPageBaseUrl = appSettings.Value.BaseUrl;
-
-            _logger.LogInformation("AuditLogHandlerService: _confirmationPageBaseUrl (for email links) initialized to: '{Url}'", _confirmationPageBaseUrl);
-            if (string.IsNullOrWhiteSpace(_confirmationPageBaseUrl) || !_confirmationPageBaseUrl.StartsWith("http"))
-            {
-                _logger.LogError("CRITICAL CONFIGURATION ERROR: AuditLogHandlerService._confirmationPageBaseUrl is invalid or not configured in appsettings.json (ApplicationSettings:BaseUrl). It must be the full base URL of your frontend application (e.g., http://localhost:5173). Current value: '{Url}'", _confirmationPageBaseUrl);
-            }
         }
 
         public async Task ProcessAuditLogEntryAsync(AuditLog auditLog)
