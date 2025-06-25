@@ -11,7 +11,7 @@
         public string TravelAgencyName { get; set; }
         public decimal AgencyBookingCharge { get; set; } // Use decimal
         public decimal TotalExpense { get; set; }      // Use decimal
-        public string PdfFilePath { get; set; }         // Cloudinary URL
+        public List<string>? PdfFilePath { get; set; }          // Cloudinary URL
         public List<AirlineDetailDTO> Airlines { get; set; }
     }
 }

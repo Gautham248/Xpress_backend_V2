@@ -210,6 +210,10 @@ namespace Xpress_backend_V2.Data
                 .WithMany(u => u.CreatedVisaDocs)
                 .HasForeignKey(vd => vd.CreatedBy);
             #endregion
+
+            modelBuilder.Entity<TravelRequest>()
+                .Property(e => e.TicketDocumentPath)
+                .HasColumnType("jsonb");
         }
     }
 }
