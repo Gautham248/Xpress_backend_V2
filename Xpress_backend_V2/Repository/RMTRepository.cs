@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Npgsql;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
@@ -8,10 +10,12 @@ namespace Xpress_backend_V2.Repository
     public class RMTRepository : IRMTServices
     {
         private readonly ApiDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public RMTRepository(ApiDbContext context)
+        public RMTRepository(ApiDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         public async Task<IEnumerable<RMT>> GetAllAsync()

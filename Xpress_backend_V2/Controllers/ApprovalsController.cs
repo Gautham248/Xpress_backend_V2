@@ -2,6 +2,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Xpress_backend_V2.BackgroundServices;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
@@ -18,7 +19,7 @@ namespace Xpress_backend_V2.Controllers
     {
         private readonly ITravelRequestServices _travelRequestService;
         private readonly IAuditLogServices _auditLogService;
-        private readonly IAuditLogHandlerService _auditLogHandlerService; // Already injected
+        private readonly IBackgroundTaskQueue _taskQueue;
         private readonly ApiDbContext _context;
         private readonly IMapper _mapper;
         private readonly ILogger<ApprovalsController> _logger; // <<< ADDED for logging
@@ -27,15 +28,16 @@ namespace Xpress_backend_V2.Controllers
         public ApprovalsController(
             ITravelRequestServices travelRequestService,
             IAuditLogServices auditLogService,
-            IAuditLogHandlerService auditLogHandlerService, // Ensure it's injected
+            IBackgroundTaskQueue taskQueue,
+         
             ApiDbContext context,
             IMapper mapper,
             ILogger<ApprovalsController> logger) // <<< ADDED ILogger injection
         {
             _travelRequestService = travelRequestService;
             _auditLogService = auditLogService;
-            _auditLogHandlerService = auditLogHandlerService; // Ensure it's assigned
             _context = context;
+            _taskQueue = taskQueue;
             _mapper = mapper;
             _response = new APIResponse();
             _logger = logger; // <<< ADDED assign logger
@@ -165,18 +167,15 @@ namespace Xpress_backend_V2.Controllers
                 _logger.LogInformation("ManagerApprove: AuditLog {LogId} for TR {ReqId} saved.", auditLogEntry.LogId, requestId);
 
                 // --- CALL AUDIT LOG HANDLER SERVICE TO TRIGGER EMAILS ---
-                await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLogEntry); // <<< ADDED THIS LINE
                 _logger.LogInformation("ManagerApprove: AuditLogHandlerService processed for AuditLog {LogId}, TR {ReqId}.", auditLogEntry.LogId, requestId);
             }
             catch (Exception ex)
             {
-                // Log error during audit or email processing but the main action (approval) succeeded
                 _logger.LogError(ex, "ManagerApprove: Error during AuditLog saving or Email processing for TR {ReqId} after approval. Approval stands.", requestId);
-                // Depending on requirements, you might still return success or a partial success message.
-                // For now, we'll let the success response below proceed.
+               
             }
 
-
+            await _taskQueue.QueueBackgroundWorkItemAsync(auditLogEntry.LogId);
             var updatedRequestDto = _mapper.Map<TravelRequestResponseDTO>(travelRequest);
             var auditLogDto = _mapper.Map<AuditLogResponseDTO>(auditLogEntry); // Make sure AuditLogResponseDTO is defined
 
@@ -248,7 +247,8 @@ namespace Xpress_backend_V2.Controllers
                 _logger.LogInformation("ManagerReject: AuditLog {LogId} saved for TR {ReqId}", auditLogEntry.LogId, requestId);
 
                 // --- CALL AUDIT LOG HANDLER SERVICE TO TRIGGER EMAILS ---
-                await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLogEntry); // <<< ADDED THIS LINE
+
+                await _taskQueue.QueueBackgroundWorkItemAsync(auditLogEntry.LogId);
                 _logger.LogInformation("ManagerReject: AuditLogHandlerService processed for AuditLog {LogId}, TR {ReqId}", auditLogEntry.LogId, requestId);
 
                 _response.IsSuccess = true;
@@ -272,8 +272,6 @@ namespace Xpress_backend_V2.Controllers
             _response = new APIResponse();
             _logger.LogInformation("PUT /duhead/approve for TR {ReqId}, ApprovingUserId: {UserId}", requestId, approvalDto.ApprovingUserId);
 
-            // ... (similar ModelState, travelRequest fetch, RMT/User security checks for DU Head) ...
-            // Ensure approvalDto.ApprovingUserId is validated against RMT.DuHeadEmail's User record
 
             var travelRequest = await _travelRequestService.GetByIdAsync(requestId);
             if (travelRequest == null) { /* NotFound */ }
@@ -289,8 +287,7 @@ namespace Xpress_backend_V2.Controllers
                 /* Forbidden */
             }
 
-            // DU Head approves when status is VERIFIED_STATUS_ID (Manager Approved)
-            if (travelRequest.CurrentStatusId != VERIFIED_STATUS_ID) // <<< CORRECTED STATUS CHECK
+            if (travelRequest.CurrentStatusId != VERIFIED_STATUS_ID) 
             {
                 /* Conflict */
                 var currentStatus = await _context.RequestStatuses.FindAsync(travelRequest.CurrentStatusId);
@@ -326,7 +323,8 @@ namespace Xpress_backend_V2.Controllers
                 _logger.LogInformation("DUHeadApprove: AuditLog {LogId} saved for TR {ReqId}", auditLogEntry.LogId, requestId);
 
                 // --- CALL AUDIT LOG HANDLER SERVICE TO TRIGGER EMAILS ---
-                await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLogEntry); // <<< ADDED THIS LINE
+                //await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLogEntry);
+                await _taskQueue.QueueBackgroundWorkItemAsync(auditLogEntry.LogId);
                 _logger.LogInformation("DUHeadApprove: AuditLogHandlerService processed for AuditLog {LogId}, TR {ReqId}", auditLogEntry.LogId, requestId);
 
                 _response.IsSuccess = true;
@@ -343,11 +341,7 @@ namespace Xpress_backend_V2.Controllers
             }
         }
 
-        // ... (Implement DUHeadReject and ManagerSelectTicket similarly, ensuring the call to _auditLogHandlerService)
-
-        // GenerateHtmlResponse - this should ideally NOT be in your API controller if it's a pure API.
-        // The confirm-action.html page should handle displaying messages based on JSON APIResponse.
-        // However, if you need it for some direct GET links that you might add later for viewing status:
+      
         private ContentResult GenerateHtmlResponse(string title, string message, string additionalInfo = null)
         {
             string html = $@"

@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Npgsql;
 using System.Globalization;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
@@ -12,11 +14,13 @@ namespace Xpress_backend_V2.Repository
         private readonly ApiDbContext _context;
         private readonly ILogger<TravelRequestRepository> _logger;
         private readonly IAuditLogServices _auditLogServices;
+        private readonly IConfiguration _configuration;
 
-        public TravelRequestRepository(ApiDbContext context, ILogger<TravelRequestRepository> logger, IAuditLogServices auditLogServices)
+        public TravelRequestRepository(ApiDbContext context, ILogger<TravelRequestRepository> logger, IAuditLogServices auditLogServices ,IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
+            _configuration = configuration;
             _auditLogServices = auditLogServices;
         }
 
@@ -117,6 +121,8 @@ namespace Xpress_backend_V2.Repository
 
             return await query.ToListAsync();
         }
+
+
 
         //public async Task<IEnumerable<TravelRequest>> GetAllTravelRequestsAsync()
         //{

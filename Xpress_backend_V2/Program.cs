@@ -11,6 +11,7 @@ using Xpress_backend_V2.Repositories;
 using Xpress_backend_V2.Repository;
 using Xpress_backend_V2.Services;
 using Xpress_backend_V2.Services.Interface;
+using Xpress_backend_V2.BackgroundServices;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -53,6 +54,7 @@ builder.Services.AddScoped<ITravelModeServices, TravelModeRepository>();
 
 builder.Services.AddScoped<IAirlineReportRepository, AirlineReportRepository>();
 
+
 builder.Services.AddScoped<IRequestStatusServices, RequestStatusRepository>();
 builder.Services.AddScoped<IUserNotificationServices, UserNotificationRepository>();
 builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
@@ -64,8 +66,10 @@ builder.Services.AddScoped<ITravelRequestStatsRepository, TravelRequestStatsRepo
 builder.Services.AddScoped<IDocumentService, DocumentRepository>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
 
 builder.Services.AddScoped<IAuditLogHandlerService, AuditLogHandlerService>();
+builder.Services.AddHostedService<QueuedHostedService>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IProcessingTimeRepository, ProcessingTimeRepository>();
 builder.Services.AddScoped<IDocumentStatusRepository, DocumentStatusRepository>();
@@ -135,7 +139,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 // Apply CORS policy
 app.UseCors("AllowAll");
