@@ -306,7 +306,7 @@ namespace Xpress_backend_V2.Controllers
                 OldStatusId = oldStatusId,
                 NewStatusId = travelRequest.CurrentStatusId,
                 ChangeDescription = $"Status set to 'OptionSelected' after ticket option {optionToSelect.OptionId} was selected.",
-                Comments = selectionDto.Comments
+                //Comments = selectionDto.Comments
             };
             await _auditLogService.AddAsync(auditLogStatusChange);
             await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLogStatusChange);
@@ -387,7 +387,7 @@ namespace Xpress_backend_V2.Controllers
                 UserId = currentUserId,
                 ActionType = "TICKET_OPTION_DELETED",
                 ChangeDescription = $"Ticket option {optionId} ('{ticketOption.OptionDescription}') deleted.",
-                Comments = wasSelected ? "This was the previously selected option." : null
+                //Comments = wasSelected ? "This was the previously selected option." : null
             };
             await _auditLogService.AddAsync(auditLogDeletion);
 
