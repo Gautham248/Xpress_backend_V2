@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Security.Claims;
+using System.Text.Json;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -1056,13 +1057,13 @@ namespace Xpress_backend_V2.Controllers
             }
         }
 
-        // To download the ticket file
-        [HttpGet("{requestId}/downloadticket")]
+        // To download the ticket files
+        [HttpGet("{requestId}/downloadtickets")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileStreamResult))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> DownloadTicket(string requestId)
+        public async Task<IActionResult> DownloadTicket(string requestId, [FromQuery] int? index = null)
         {
             if (string.IsNullOrWhiteSpace(requestId))
             {
@@ -1071,37 +1072,67 @@ namespace Xpress_backend_V2.Controllers
 
             try
             {
-                // Find the URL for the ticket document
-                var ticketPath = await _context.TravelRequests
+                // Find the ticket document paths
+                var ticketPathsJson = await _context.TravelRequests
                     .Where(tr => tr.RequestId == requestId)
                     .Select(tr => tr.TicketDocumentPath)
                     .FirstOrDefaultAsync();
 
-                if (string.IsNullOrWhiteSpace(ticketPath))
+                if (string.IsNullOrWhiteSpace(ticketPathsJson))
                 {
-                    return NotFound("No ticket document is available for this travel request.");
+                    return NotFound("No ticket documents are available for this travel request.");
                 }
+
+                // Parse the JSON array
+                var ticketPaths = JsonSerializer.Deserialize<string[]>(ticketPathsJson);
+                if (ticketPaths == null || ticketPaths.Length == 0)
+                {
+                    return NotFound("No valid ticket documents found.");
+                }
+
+                // If no index specified and there's only one file, default to index 0
+                var selectedIndex = index ?? 0;
+
+                // Validate index
+                if (selectedIndex < 0 || selectedIndex >= ticketPaths.Length)
+                {
+                    return BadRequest($"Invalid document index. Must be between 0 and {ticketPaths.Length - 1}.");
+                }
+
+                var selectedPath = ticketPaths[selectedIndex];
 
                 // Create an HttpClient to fetch the file from the URL
                 var httpClient = _httpClientFactory.CreateClient();
-                var response = await httpClient.GetAsync(ticketPath);
+                var response = await httpClient.GetAsync(selectedPath);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}", ticketPath, response.StatusCode);
-                    return StatusCode((int)response.StatusCode, $"Could not retrieve the file from the source. Status: {response.StatusCode}");
+                    _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}",
+                        selectedPath, response.StatusCode);
+                    return StatusCode((int)response.StatusCode,
+                        $"Could not retrieve the file from the source. Status: {response.StatusCode}");
                 }
 
                 var fileStream = await response.Content.ReadAsStreamAsync();
+                var fileExtension = Path.GetExtension(selectedPath).ToLowerInvariant();
+                var contentType = fileExtension switch
+                {
+                    ".pdf" => "application/pdf",
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".webp" => "image/webp",
+                    _ => "application/octet-stream"
+                };
 
-                var downloadFileName = $"Ticket-{requestId}.pdf";
+                var downloadFileName = $"Ticket-{requestId}-{selectedIndex}{fileExtension}";
 
-                return File(fileStream, "application/pdf", downloadFileName);
+                return File(fileStream, contentType, downloadFileName);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while processing ticket download for Request ID {RequestId}", requestId);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An internal error occurred while processing your download request.");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "An internal error occurred while processing your download request.");
             }
         }
     }
