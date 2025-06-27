@@ -1,4 +1,7 @@
-﻿using AutoMapper;
+﻿using System.Net;
+using System.Security.Claims;
+using System.Text.Json;
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IO.Compression;
@@ -17,7 +20,7 @@ namespace Xpress_backend_V2.Controllers
     public class TravelRequestController : ControllerBase
     {
         private readonly ITravelRequestServices _travelRequestService;
-       
+
         private readonly ApiDbContext _context;
         private readonly IMapper _mapper;
 
@@ -205,7 +208,7 @@ namespace Xpress_backend_V2.Controllers
 
 
 
-        
+
         [HttpPost]
         [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -250,16 +253,16 @@ namespace Xpress_backend_V2.Controllers
                     {
                         ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnDepartureDate), "Return departure date is required for a round trip.");
                     }
-                    else 
+                    else
                     {
-                        
+
                         if (travelRequestEntity.OutboundArrivalDate.HasValue &&
                             travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate.Value)
                         {
                             ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnDepartureDate), "Return departure date must be after outbound arrival date.");
                         }
 
-                        
+
                         if (travelRequestEntity.ReturnArrivalDate.HasValue)
                         {
                             if (travelRequestEntity.ReturnArrivalDate.Value <= travelRequestEntity.ReturnDepartureDate.Value)
@@ -285,7 +288,7 @@ namespace Xpress_backend_V2.Controllers
                     ModelState.AddModelError(nameof(travelRequestCreateDto.DropOffPlace), "Drop-off place is required when drop-off is requested.");
                 }
 
-                
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
@@ -342,15 +345,15 @@ namespace Xpress_backend_V2.Controllers
 
             return travelModeId switch
             {
-                1 => "F", 
-                2 => "T", 
-                3 => "B", 
-                4 => "C", 
-                _ => "F"  
+                1 => "F",
+                2 => "T",
+                3 => "B",
+                4 => "C",
+                _ => "F"
             };
         }
 
-       
+
         private string GenerateRandomSequence(int length)
         {
             var random = new Random();
@@ -572,7 +575,7 @@ namespace Xpress_backend_V2.Controllers
                     AttendedCct = tr.AttendedCCT,
                     TravelAgencyName = tr.TravelAgencyName,
                     TotalExpense = tr.TotalExpense,
-                    UploadedTicketPdfPath = tr.TicketDocumentPath ?? new List<string>(),
+                    UploadedTicketPdfPath = tr.TicketDocumentPath,
                     CreatedAt = tr.CreatedAt,
                     UpdatedAt = tr.UpdatedAt,
                     EmployeeName = tr.User.EmployeeName,
@@ -981,7 +984,7 @@ namespace Xpress_backend_V2.Controllers
 
                         _context.Airlines.Add(newAirlineSegment);
                         _logger.LogInformation("Prepared airline segment: {AirlineName} for Request ID: {RequestId}", newAirlineSegment.AirlineName, requestId);
-                        
+
                     }
                 }
 
@@ -1065,13 +1068,13 @@ namespace Xpress_backend_V2.Controllers
             }
         }
 
-        // To download the ticket file
+        // Download Tickets
         [HttpGet("{requestId}/downloadticket")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileStreamResult))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> DownloadTicket(string requestId)
+        public async Task<IActionResult> DownloadTicket(string requestId, [FromQuery] int index)
         {
             if (string.IsNullOrWhiteSpace(requestId))
             {
@@ -1080,78 +1083,53 @@ namespace Xpress_backend_V2.Controllers
 
             try
             {
-                // Find the URL for the ticket document
-                var ticketPath = await _context.TravelRequests
+                var ticketPaths = await _context.TravelRequests
                     .Where(tr => tr.RequestId == requestId)
                     .Select(tr => tr.TicketDocumentPath)
                     .FirstOrDefaultAsync();
 
-                if (ticketPath == null || !ticketPath.Any())
+                if (ticketPaths == null || !ticketPaths.Any())
                 {
-                    return NotFound("No ticket document is available for this travel request.");
+                    return NotFound("No ticket documents are available for this travel request.");
                 }
 
-                // Create an HttpClient to fetch the file from the URL
+                if (index < 0 || index >= ticketPaths.Count)
+                {
+                    return BadRequest($"Invalid document index. Please provide an index between 0 and {ticketPaths.Count - 1}.");
+                }
+
+                var selectedPath = ticketPaths[index];
+                if (string.IsNullOrWhiteSpace(selectedPath))
+                {
+                    return NotFound($"The document at index {index} has an invalid or empty URL.");
+                }
+
+                //HttpClient to fetch the single file from its URL
                 var httpClient = _httpClientFactory.CreateClient();
-                var tasks = ticketPath.Select(path => httpClient.GetAsync(path));
-                var responses = await Task.WhenAll(tasks);
+                var response = await httpClient.GetAsync(selectedPath);
 
-                var fileStreams = new List<Stream>();
-                var failedDownloads = new List<string>();
-
-                if (responses == null || !responses.Any())
+                if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogError("No responses available");
-                    return BadRequest("No responses available");
+                    _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}", selectedPath, response.StatusCode);
+                    return StatusCode((int)response.StatusCode, $"Could not retrieve the file from the source. Status: {response.StatusCode}");
                 }
 
-                for (int i = 0; i < responses.Length; i++)
+                // Prepare the file for download
+                var fileStream = await response.Content.ReadAsStreamAsync();
+
+                var fileExtension = Path.GetExtension(new Uri(selectedPath).AbsolutePath).ToLowerInvariant();
+                var contentType = fileExtension switch
                 {
-                    var response = responses[i];
-                    var path = ticketPath[i];
+                    ".pdf" => "application/pdf",
+                    ".jpg" or ".jpeg" => "image/jpeg",
+                    ".png" => "image/png",
+                    ".webp" => "image/webp",
+                    _ => "application/octet-stream"
+                };
 
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}", path, response.StatusCode);
-                        failedDownloads.Add(path);
-                        continue;
-                    }
+                var downloadFileName = $"Ticket-{requestId}-{index + 1}{fileExtension}";
 
-                    var fileStream = await response.Content.ReadAsStreamAsync();
-                    fileStreams.Add(fileStream);
-                }
-
-                if (failedDownloads.Any())
-                {
-                    return StatusCode(500, $"Failed to download {failedDownloads.Count} files: {string.Join(", ", failedDownloads)}");
-                }
-
-                if (!fileStreams.Any())
-                {
-                    return BadRequest("No files available for download");
-                }
-
-                using var zipStream = new MemoryStream();
-                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
-                {
-                    for (int i = 0; i < fileStreams.Count; i++)
-                    {
-                        var fileName = $"Ticket-{requestId}-{i + 1}.pdf";
-                        var zipEntry = archive.CreateEntry(fileName);
-
-                        using var entryStream = zipEntry.Open();
-                        fileStreams[i].Position = 0; // Reset stream position
-                        await fileStreams[i].CopyToAsync(entryStream);
-                    }
-                }
-
-                zipStream.Position = 0;
-                var downloadFileName = $"Tickets-{requestId}.zip";
-                return File(zipStream.ToArray(), "application/zip", downloadFileName);
-
-                //var downloadFileName = $"Ticket-{requestId}.pdf";
-
-                //return File(fileStreams, "application/pdf", downloadFileName);
+                return File(fileStream, contentType, downloadFileName);
             }
             catch (Exception ex)
             {

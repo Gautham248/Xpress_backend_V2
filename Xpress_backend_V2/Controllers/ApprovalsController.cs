@@ -11,8 +11,6 @@ using Xpress_backend_V2.Models.DTO;
 
 namespace Xpress_backend_V2.Controllers
 {
-    //
-
     [Route("api/[controller]")]
     [ApiController]
     public class ApprovalsController : ControllerBase
@@ -155,7 +153,7 @@ namespace Xpress_backend_V2.Controllers
                 ActionType = "ManagerApproved",      // <<< MODIFIED for clarity
                 OldStatusId = oldStatusId,
                 NewStatusId = VERIFIED_STATUS_ID,
-                Comments = approvalDto.Comments,
+                //Comments = approvalDto.Comments,
                 ActionDate = DateTime.UtcNow,        // <<< ADDED/CONFIRMED
                 Timestamp = DateTime.UtcNow,         // <<< ADDED/CONFIRMED
                 ChangeDescription = $"Manager ({managerUser.EmployeeName}) approved. Status changed from '{oldStatusName}' to '{newStatusName}'."
@@ -238,7 +236,7 @@ namespace Xpress_backend_V2.Controllers
                     ActionType = "ManagerRejected", // <<< MODIFIED for clarity
                     OldStatusId = oldStatusId,
                     NewStatusId = REJECTED_STATUS_ID,
-                    Comments = rejectionDto.Comments,
+                    //Comments = rejectionDto.Comments,
                     ActionDate = DateTime.UtcNow,    // <<< ADDED/CONFIRMED
                     Timestamp = DateTime.UtcNow,     // <<< ADDED/CONFIRMED
                     ChangeDescription = $"Manager ({actorUser.EmployeeName}) rejected. Status changed from '{_context.RequestStatuses.Find(oldStatusId)?.StatusName ?? oldStatusId.ToString()}' to '{rejectedStatusEntity.StatusName}'."
@@ -314,7 +312,7 @@ namespace Xpress_backend_V2.Controllers
                     ActionType = "DuHeadApproved", // <<< MODIFIED for clarity
                     OldStatusId = oldStatusId,
                     NewStatusId = DU_APPROVED_STATUS_ID,
-                    Comments = approvalDto.Comments,
+                    //Comments = approvalDto.Comments,
                     ActionDate = DateTime.UtcNow,    // <<< ADDED/CONFIRMED
                     Timestamp = DateTime.UtcNow,     // <<< ADDED/CONFIRMED
                     ChangeDescription = $"DU Head ({actorUser.EmployeeName}) approved. Status changed from '{_context.RequestStatuses.Find(oldStatusId)?.StatusName ?? oldStatusId.ToString()}' to '{duApprovedStatusEntity.StatusName}'."
