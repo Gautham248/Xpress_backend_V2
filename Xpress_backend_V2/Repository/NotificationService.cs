@@ -15,8 +15,20 @@ namespace Xpress_backend_V2.Repository
 
         public NotificationService(IOptions<EmailSettings> emailSettings, ILogger<NotificationService> logger)
         {
-            _emailSettings = emailSettings.Value;
             _logger = logger;
+
+            if (emailSettings == null || emailSettings.Value == null)
+            {
+                _logger.LogCritical("EmailSettings are not configured in appsettings.json. The 'EmailSettings' section is missing or empty.");
+                throw new InvalidOperationException("EmailSettings are not configured in appsettings.json.");
+            }
+            _emailSettings = emailSettings.Value;
+
+            if (string.IsNullOrWhiteSpace(_emailSettings.SmtpHost))
+            {
+                _logger.LogCritical("EmailSettings:SmtpHost is missing in appsettings.json.");
+                throw new InvalidOperationException("EmailSettings:SmtpHost is not configured.");
+            }
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string htmlBody)

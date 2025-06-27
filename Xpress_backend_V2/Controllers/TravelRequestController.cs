@@ -4,6 +4,10 @@ using System.Text.Json;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IO.Compression;
+using System.Net;
+using System.Security.Claims;
+using Xpress_backend_V2.BackgroundServices;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
 using Xpress_backend_V2.Models;
@@ -16,12 +20,15 @@ namespace Xpress_backend_V2.Controllers
     public class TravelRequestController : ControllerBase
     {
         private readonly ITravelRequestServices _travelRequestService;
+
         private readonly ApiDbContext _context;
         private readonly IMapper _mapper;
+
         private readonly IAuditLogServices _auditLogService;
 
         private readonly ILogger<TravelRequestController> _logger;
-        private readonly IAuditLogHandlerService _auditLogHandlerService;
+        //private readonly IAuditLogHandlerService _auditLogHandlerService;
+        private readonly IBackgroundTaskQueue _taskQueue;
         protected APIResponse _response;
         private readonly IHttpClientFactory _httpClientFactory;
 
@@ -31,18 +38,21 @@ namespace Xpress_backend_V2.Controllers
 
         public TravelRequestController(ITravelRequestServices travelRequestService,
             ApiDbContext context,
+            IBackgroundTaskQueue taskQueue,
             IAuditLogServices auditLogService,
-            IAuditLogHandlerService auditLogHandler,
+            //IAuditLogHandlerService auditLogHandler,
             IMapper mapper,
+
             ILogger<TravelRequestController> logger,
             IHttpClientFactory httpClientFactory)
         {
             _travelRequestService = travelRequestService;
             _auditLogService = auditLogService;
             _mapper = mapper;
+            _taskQueue = taskQueue;
             _context = context;
             _logger = logger;
-            _auditLogHandlerService = auditLogHandler;
+            //_auditLogHandlerService = auditLogHandler;
             _response = new APIResponse();
             _httpClientFactory = httpClientFactory;
         }
@@ -198,7 +208,7 @@ namespace Xpress_backend_V2.Controllers
 
 
 
-        
+
         [HttpPost]
         [ProducesResponseType(typeof(TravelRequestResponseDTO), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -243,16 +253,16 @@ namespace Xpress_backend_V2.Controllers
                     {
                         ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnDepartureDate), "Return departure date is required for a round trip.");
                     }
-                    else 
+                    else
                     {
-                        
+
                         if (travelRequestEntity.OutboundArrivalDate.HasValue &&
                             travelRequestEntity.ReturnDepartureDate.Value <= travelRequestEntity.OutboundArrivalDate.Value)
                         {
                             ModelState.AddModelError(nameof(travelRequestCreateDto.ReturnDepartureDate), "Return departure date must be after outbound arrival date.");
                         }
 
-                        
+
                         if (travelRequestEntity.ReturnArrivalDate.HasValue)
                         {
                             if (travelRequestEntity.ReturnArrivalDate.Value <= travelRequestEntity.ReturnDepartureDate.Value)
@@ -278,7 +288,7 @@ namespace Xpress_backend_V2.Controllers
                     ModelState.AddModelError(nameof(travelRequestCreateDto.DropOffPlace), "Drop-off place is required when drop-off is requested.");
                 }
 
-                
+
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
@@ -298,7 +308,8 @@ namespace Xpress_backend_V2.Controllers
                     Timestamp = createdTravelRequest.CreatedAt
                 };
                 await _auditLogService.CreateAuditLogAsync(auditLog);
-                await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLog);
+                //await _auditLogHandlerService.ProcessAuditLogEntryAsync(auditLog);
+                await _taskQueue.QueueBackgroundWorkItemAsync(auditLog.LogId);
 
                 var responseDto = _mapper.Map<TravelRequestResponseDTO>(createdTravelRequest);
 
@@ -334,15 +345,15 @@ namespace Xpress_backend_V2.Controllers
 
             return travelModeId switch
             {
-                1 => "F", 
-                2 => "T", 
-                3 => "B", 
-                4 => "C", 
-                _ => "F"  
+                1 => "F",
+                2 => "T",
+                3 => "B",
+                4 => "C",
+                _ => "F"
             };
         }
 
-       
+
         private string GenerateRandomSequence(int length)
         {
             var random = new Random();
@@ -498,7 +509,7 @@ namespace Xpress_backend_V2.Controllers
                     AttendedCct = t.AttendedCCT,
                     TravelAgencyName = t.TravelAgencyName,
                     TotalExpense = t.TotalExpense,
-                    UploadedTicketPdfPath = t.TicketDocumentPath,
+                    UploadedTicketPdfPath = t.TicketDocumentPath ?? new List<string>(),
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt,
                     EmployeeName = t.User != null ? t.User.EmployeeName : "Unknown",
@@ -564,7 +575,7 @@ namespace Xpress_backend_V2.Controllers
                     AttendedCct = tr.AttendedCCT,
                     TravelAgencyName = tr.TravelAgencyName,
                     TotalExpense = tr.TotalExpense,
-                    UploadedTicketPdfPath = tr.TicketDocumentPath,
+                    UploadedTicketPdfPath = tr.TicketDocumentPath ?? new List<string>(),
                     CreatedAt = tr.CreatedAt,
                     UpdatedAt = tr.UpdatedAt,
                     EmployeeName = tr.User.EmployeeName,
@@ -635,7 +646,7 @@ namespace Xpress_backend_V2.Controllers
                     AttendedCct = tr.AttendedCCT,
                     TravelAgencyName = tr.TravelAgencyName,
                     TotalExpense = tr.TotalExpense,
-                    UploadedTicketPdfPath = tr.TicketDocumentPath,
+                    UploadedTicketPdfPath = tr.TicketDocumentPath ?? new List<string>(),
                     CreatedAt = tr.CreatedAt,
                     UpdatedAt = tr.UpdatedAt,
                     EmployeeName = tr.User.EmployeeName,
@@ -973,7 +984,7 @@ namespace Xpress_backend_V2.Controllers
 
                         _context.Airlines.Add(newAirlineSegment);
                         _logger.LogInformation("Prepared airline segment: {AirlineName} for Request ID: {RequestId}", newAirlineSegment.AirlineName, requestId);
-                        
+
                     }
                 }
 
@@ -1057,13 +1068,13 @@ namespace Xpress_backend_V2.Controllers
             }
         }
 
-        // To download the ticket files
-        [HttpGet("{requestId}/downloadtickets")]
+        // Download Tickets
+        [HttpGet("{requestId}/downloadticket")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileStreamResult))]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> DownloadTicket(string requestId, [FromQuery] int? index = null)
+        public async Task<IActionResult> DownloadTicket(string requestId, [FromQuery] int index)
         {
             if (string.IsNullOrWhiteSpace(requestId))
             {
@@ -1072,49 +1083,41 @@ namespace Xpress_backend_V2.Controllers
 
             try
             {
-                // Find the ticket document paths
-                var ticketPathsJson = await _context.TravelRequests
+                var ticketPaths = await _context.TravelRequests
                     .Where(tr => tr.RequestId == requestId)
                     .Select(tr => tr.TicketDocumentPath)
                     .FirstOrDefaultAsync();
 
-                if (string.IsNullOrWhiteSpace(ticketPathsJson))
+                if (ticketPaths == null || !ticketPaths.Any())
                 {
                     return NotFound("No ticket documents are available for this travel request.");
                 }
 
-                // Parse the JSON array
-                var ticketPaths = JsonSerializer.Deserialize<string[]>(ticketPathsJson);
-                if (ticketPaths == null || ticketPaths.Length == 0)
+                if (index < 0 || index >= ticketPaths.Count)
                 {
-                    return NotFound("No valid ticket documents found.");
+                    return BadRequest($"Invalid document index. Please provide an index between 0 and {ticketPaths.Count - 1}.");
                 }
 
-                // If no index specified and there's only one file, default to index 0
-                var selectedIndex = index ?? 0;
-
-                // Validate index
-                if (selectedIndex < 0 || selectedIndex >= ticketPaths.Length)
+                var selectedPath = ticketPaths[index];
+                if (string.IsNullOrWhiteSpace(selectedPath))
                 {
-                    return BadRequest($"Invalid document index. Must be between 0 and {ticketPaths.Length - 1}.");
+                    return NotFound($"The document at index {index} has an invalid or empty URL.");
                 }
 
-                var selectedPath = ticketPaths[selectedIndex];
-
-                // Create an HttpClient to fetch the file from the URL
+                //HttpClient to fetch the single file from its URL
                 var httpClient = _httpClientFactory.CreateClient();
                 var response = await httpClient.GetAsync(selectedPath);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}",
-                        selectedPath, response.StatusCode);
-                    return StatusCode((int)response.StatusCode,
-                        $"Could not retrieve the file from the source. Status: {response.StatusCode}");
+                    _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}", selectedPath, response.StatusCode);
+                    return StatusCode((int)response.StatusCode, $"Could not retrieve the file from the source. Status: {response.StatusCode}");
                 }
 
+                // Prepare the file for download
                 var fileStream = await response.Content.ReadAsStreamAsync();
-                var fileExtension = Path.GetExtension(selectedPath).ToLowerInvariant();
+
+                var fileExtension = Path.GetExtension(new Uri(selectedPath).AbsolutePath).ToLowerInvariant();
                 var contentType = fileExtension switch
                 {
                     ".pdf" => "application/pdf",
@@ -1124,16 +1127,16 @@ namespace Xpress_backend_V2.Controllers
                     _ => "application/octet-stream"
                 };
 
-                var downloadFileName = $"Ticket-{requestId}-{selectedIndex}{fileExtension}";
+                var downloadFileName = $"Ticket-{requestId}-{index + 1}{fileExtension}";
 
                 return File(fileStream, contentType, downloadFileName);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while processing ticket download for Request ID {RequestId}", requestId);
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    "An internal error occurred while processing your download request.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An internal error occurred while processing your download request.");
             }
         }
+
     }
 }

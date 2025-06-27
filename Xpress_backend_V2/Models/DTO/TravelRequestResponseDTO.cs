@@ -31,7 +31,7 @@
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public bool IsActive { get; set; }
-        public string TicketDocumentPath { get; set; }
+        public List<string>? TicketDocumentPath { get; set; }
 
     }
 }

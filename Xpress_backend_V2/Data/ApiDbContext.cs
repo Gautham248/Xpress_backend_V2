@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Xpress_backend_V2.Models;
 
@@ -22,6 +23,11 @@ namespace Xpress_backend_V2.Data
         public DbSet<AadharDoc> AadharDocs { get; set; }
         public DbSet<PassportDoc> PassportDocs { get; set; }
         public DbSet<VisaDoc> VisaDocs { get; set; }
+        public DbSet<WorkflowTemplate> WorkflowTemplates { get; set; }
+        public DbSet<WorkflowStep> WorkflowSteps { get; set; }
+        public DbSet<WorkflowRule> WorkflowRules { get; set; }
+        public DbSet<WorkflowHistory> WorkflowHistory { get; set; }
+
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -209,6 +215,104 @@ namespace Xpress_backend_V2.Data
                 .HasOne(vd => vd.CreatedByUser)
                 .WithMany(u => u.CreatedVisaDocs)
                 .HasForeignKey(vd => vd.CreatedBy);
+            #endregion
+
+            #region WorkflowTemplates Configuration
+            modelBuilder.Entity<WorkflowTemplate>(entity =>
+            {
+                entity.HasKey(wt => wt.WorkflowId);
+                entity.Property(wt => wt.WorkflowName).IsRequired().HasMaxLength(100);
+                entity.Property(wt => wt.WorkflowDescription).HasMaxLength(500);
+                entity.Property(wt => wt.IsActive).HasDefaultValue(true);
+                entity.Property(wt => wt.CreatedAt).IsRequired().HasConversion(utcConverter);
+                entity.Property(wt => wt.UpdatedAt).IsRequired().HasConversion(utcConverter);
+            });
+            #endregion
+
+            #region WorkflowSteps Configuration
+            modelBuilder.Entity<WorkflowStep>(entity =>
+            {
+                entity.HasKey(ws => ws.StepId);
+                entity.Property(ws => ws.WorkflowId).IsRequired();
+                entity.Property(ws => ws.StatusId).IsRequired();
+                entity.Property(ws => ws.StepOrder).IsRequired();
+                entity.Property(ws => ws.RequiresApproval).HasDefaultValue(false);
+                entity.Property(ws => ws.ApproverRole).HasMaxLength(50);
+                entity.Property(ws => ws.StepDescription).HasMaxLength(500);
+                entity.Property(ws => ws.IsActive).HasDefaultValue(true);
+                entity.HasIndex(ws => new { ws.WorkflowId, ws.StepOrder }).IsUnique();
+                entity.HasOne(ws => ws.WorkflowTemplate)
+                      .WithMany(wt => wt.WorkflowSteps)
+                      .HasForeignKey(ws => ws.WorkflowId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(ws => ws.RequestStatus)
+                      .WithMany(rs => rs.WorkflowSteps)
+                      .HasForeignKey(ws => ws.StatusId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+            #endregion
+
+            #region WorkflowRules Configuration
+            modelBuilder.Entity<WorkflowRule>(entity =>
+            {
+                entity.HasKey(wr => wr.RuleId);
+                entity.Property(wr => wr.WorkflowId).IsRequired();
+                entity.Property(wr => wr.UserRole).HasMaxLength(50);
+                entity.Property(wr => wr.ProjectCode).HasMaxLength(50);
+                entity.Property(wr => wr.Priority).HasDefaultValue(0);
+                entity.Property(wr => wr.IsActive).HasDefaultValue(true);
+                entity.Property(wr => wr.CreatedAt).IsRequired().HasConversion(utcConverter);
+                entity.HasOne(wr => wr.WorkflowTemplate)
+                      .WithMany(wt => wt.WorkflowRules)
+                      .HasForeignKey(wr => wr.WorkflowId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(wr => wr.RMT)
+                      .WithMany(r => r.WorkflowRules)
+                      .HasForeignKey(wr => wr.ProjectCode)
+                      .HasPrincipalKey(r => r.ProjectCode)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(wr => new { wr.Priority, wr.UserRole, wr.ProjectCode });
+            });
+            #endregion
+
+            #region WorkflowHistory Configuration
+            modelBuilder.Entity<WorkflowHistory>(entity =>
+            {
+                entity.HasKey(wh => wh.HistoryId);
+                entity.Property(wh => wh.RequestId).IsRequired().HasMaxLength(50);
+                entity.Property(wh => wh.NewWorkflowId).IsRequired();
+                entity.Property(wh => wh.ChangedBy).IsRequired();
+                entity.Property(wh => wh.ChangeReason).HasMaxLength(500);
+                entity.Property(wh => wh.ChangedAt).IsRequired().HasConversion(utcConverter);
+                entity.HasOne(wh => wh.TravelRequest)
+                      .WithMany(tr => tr.WorkflowHistories)
+                      .HasForeignKey(wh => wh.RequestId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(wh => wh.ChangedByUser)
+                      .WithMany(u => u.WorkflowHistories)
+                      .HasForeignKey(wh => wh.ChangedBy)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(wh => wh.OldWorkflow)
+                      .WithMany(wt => wt.WorkflowHistoriesAsOld)
+                      .HasForeignKey(wh => wh.OldWorkflowId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(wh => wh.NewWorkflow)
+                      .WithMany(wt => wt.WorkflowHistoriesAsNew)
+                      .HasForeignKey(wh => wh.NewWorkflowId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+            #endregion
+
+            #region TravelRequest Modifications
+            modelBuilder.Entity<TravelRequest>(entity =>
+            {
+                entity.Property(tr => tr.AssignedWorkflowId).IsRequired(false);
+                entity.Property(tr => tr.ReportingManagerEmail).HasMaxLength(100);
+                entity.HasOne(tr => tr.WorkflowTemplate)
+                      .WithMany(wt => wt.TravelRequests)
+                      .HasForeignKey(tr => tr.AssignedWorkflowId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
             #endregion
         }
     }
