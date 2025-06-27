@@ -575,7 +575,7 @@ namespace Xpress_backend_V2.Controllers
                     AttendedCct = tr.AttendedCCT,
                     TravelAgencyName = tr.TravelAgencyName,
                     TotalExpense = tr.TotalExpense,
-                    UploadedTicketPdfPath = tr.TicketDocumentPath ?? new List<string>(),
+                    UploadedTicketPdfPath = tr.TicketDocumentPath,
                     CreatedAt = tr.CreatedAt,
                     UpdatedAt = tr.UpdatedAt,
                     EmployeeName = tr.User.EmployeeName,
