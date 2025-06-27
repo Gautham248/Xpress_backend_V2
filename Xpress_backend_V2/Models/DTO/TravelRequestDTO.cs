@@ -26,7 +26,7 @@
 
         public string? TravelAgencyName { get; set; }
         public decimal? TotalExpense { get; set; }
-        public string? UploadedTicketPdfPath { get; set; }
+        public List<string>? UploadedTicketPdfPath { get; set; }
 
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

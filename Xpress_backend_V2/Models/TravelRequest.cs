@@ -34,7 +34,7 @@ namespace Xpress_backend_V2.Models
         public string? TravelAgencyName { get; set; }
         public decimal? TravelAgencyExpense { get; set; }
         public decimal? TotalExpense { get; set; }
-        public string? TicketDocumentPath { get; set; }
+        public List<string>? TicketDocumentPath { get; set; }
         public string? LDCertificatePath { get; set; }
         public string? TravelFeedback { get; set; }
         public DateTime CreatedAt { get; set; } // Always UTC

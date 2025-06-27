@@ -1,8 +1,9 @@
-﻿using System.Net;
-using System.Security.Claims;
-using AutoMapper;
+﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IO.Compression;
+using System.Net;
+using System.Security.Claims;
 using Xpress_backend_V2.BackgroundServices;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
@@ -505,7 +506,7 @@ namespace Xpress_backend_V2.Controllers
                     AttendedCct = t.AttendedCCT,
                     TravelAgencyName = t.TravelAgencyName,
                     TotalExpense = t.TotalExpense,
-                    UploadedTicketPdfPath = t.TicketDocumentPath,
+                    UploadedTicketPdfPath = t.TicketDocumentPath ?? new List<string>(),
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt,
                     EmployeeName = t.User != null ? t.User.EmployeeName : "Unknown",
@@ -571,7 +572,7 @@ namespace Xpress_backend_V2.Controllers
                     AttendedCct = tr.AttendedCCT,
                     TravelAgencyName = tr.TravelAgencyName,
                     TotalExpense = tr.TotalExpense,
-                    UploadedTicketPdfPath = tr.TicketDocumentPath,
+                    UploadedTicketPdfPath = tr.TicketDocumentPath ?? new List<string>(),
                     CreatedAt = tr.CreatedAt,
                     UpdatedAt = tr.UpdatedAt,
                     EmployeeName = tr.User.EmployeeName,
@@ -642,7 +643,7 @@ namespace Xpress_backend_V2.Controllers
                     AttendedCct = tr.AttendedCCT,
                     TravelAgencyName = tr.TravelAgencyName,
                     TotalExpense = tr.TotalExpense,
-                    UploadedTicketPdfPath = tr.TicketDocumentPath,
+                    UploadedTicketPdfPath = tr.TicketDocumentPath ?? new List<string>(),
                     CreatedAt = tr.CreatedAt,
                     UpdatedAt = tr.UpdatedAt,
                     EmployeeName = tr.User.EmployeeName,
@@ -1085,26 +1086,72 @@ namespace Xpress_backend_V2.Controllers
                     .Select(tr => tr.TicketDocumentPath)
                     .FirstOrDefaultAsync();
 
-                if (string.IsNullOrWhiteSpace(ticketPath))
+                if (ticketPath == null || !ticketPath.Any())
                 {
                     return NotFound("No ticket document is available for this travel request.");
                 }
 
                 // Create an HttpClient to fetch the file from the URL
                 var httpClient = _httpClientFactory.CreateClient();
-                var response = await httpClient.GetAsync(ticketPath);
+                var tasks = ticketPath.Select(path => httpClient.GetAsync(path));
+                var responses = await Task.WhenAll(tasks);
 
-                if (!response.IsSuccessStatusCode)
+                var fileStreams = new List<Stream>();
+                var failedDownloads = new List<string>();
+
+                if (responses == null || !responses.Any())
                 {
-                    _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}", ticketPath, response.StatusCode);
-                    return StatusCode((int)response.StatusCode, $"Could not retrieve the file from the source. Status: {response.StatusCode}");
+                    _logger.LogError("No responses available");
+                    return BadRequest("No responses available");
                 }
 
-                var fileStream = await response.Content.ReadAsStreamAsync();
+                for (int i = 0; i < responses.Length; i++)
+                {
+                    var response = responses[i];
+                    var path = ticketPath[i];
 
-                var downloadFileName = $"Ticket-{requestId}.pdf";
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogError("Failed to fetch ticket from URL {Url}. Status: {StatusCode}", path, response.StatusCode);
+                        failedDownloads.Add(path);
+                        continue;
+                    }
 
-                return File(fileStream, "application/pdf", downloadFileName);
+                    var fileStream = await response.Content.ReadAsStreamAsync();
+                    fileStreams.Add(fileStream);
+                }
+
+                if (failedDownloads.Any())
+                {
+                    return StatusCode(500, $"Failed to download {failedDownloads.Count} files: {string.Join(", ", failedDownloads)}");
+                }
+
+                if (!fileStreams.Any())
+                {
+                    return BadRequest("No files available for download");
+                }
+
+                using var zipStream = new MemoryStream();
+                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
+                {
+                    for (int i = 0; i < fileStreams.Count; i++)
+                    {
+                        var fileName = $"Ticket-{requestId}-{i + 1}.pdf";
+                        var zipEntry = archive.CreateEntry(fileName);
+
+                        using var entryStream = zipEntry.Open();
+                        fileStreams[i].Position = 0; // Reset stream position
+                        await fileStreams[i].CopyToAsync(entryStream);
+                    }
+                }
+
+                zipStream.Position = 0;
+                var downloadFileName = $"Tickets-{requestId}.zip";
+                return File(zipStream.ToArray(), "application/zip", downloadFileName);
+
+                //var downloadFileName = $"Ticket-{requestId}.pdf";
+
+                //return File(fileStreams, "application/pdf", downloadFileName);
             }
             catch (Exception ex)
             {
@@ -1112,5 +1159,6 @@ namespace Xpress_backend_V2.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An internal error occurred while processing your download request.");
             }
         }
+
     }
 }

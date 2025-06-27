@@ -1,15 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql; // <-- Added this using statement for the fix
 using System.Text;
 using Xpress_backend_V2.Data;
 using Xpress_backend_V2.Interface;
-using Xpress_backend_V2.Repositories;
-
-//using Xpress_backend_V2.Repositories;
 using Xpress_backend_V2.Models.Configuration;
+using Xpress_backend_V2.Repositories;
 using Xpress_backend_V2.Repository;
 using Xpress_backend_V2.Services;
 using Xpress_backend_V2.Services.Interface;
@@ -25,9 +23,27 @@ builder.Services.Configure<ApplicationSettings>(builder.Configuration.GetSection
 // Add services to the container.
 builder.Services.AddControllers();
 
-// Register DbContext
+
+// --- START: Npgsql 8.0 JSONB FIX ---
+// The original AddDbContext call is replaced with this block.
+// This is required to opt-in to dynamic JSON mapping for jsonb columns.
+
+// 1. Get the connection string from your configuration.
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// 2. Create a data source builder and enable dynamic JSON mapping.
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
+dataSourceBuilder.EnableDynamicJson(); // <-- This is the line that fixes the error
+
+// 3. Build the data source.
+var dataSource = dataSourceBuilder.Build();
+
+// 4. Register your DbContext to use the new, configured data source.
 builder.Services.AddDbContext<ApiDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(dataSource)
+);
+// --- END: Npgsql 8.0 JSONB FIX ---
+
 
 // Register services
 builder.Services.AddScoped<ITravelRequestServices, TravelRequestRepository>();
@@ -42,11 +58,8 @@ builder.Services.AddScoped<IAirlineReportRepository, AirlineReportRepository>();
 builder.Services.AddScoped<IRequestStatusServices, RequestStatusRepository>();
 builder.Services.AddScoped<IUserNotificationServices, UserNotificationRepository>();
 builder.Services.AddScoped<IAuditLogServices, AuditLogRepository>();
-//builder.Services.AddScoped<IAadharDocServices, AadharDocRepository>();
-//builder.Services.AddScoped<IPassportDocServices, PassportDocRepository>();
-//builder.Services.AddScoped<IVisaDocServices, VisaDocRepository>();
 builder.Services.AddScoped<IProjectRoleService, ProjectRoleService>();
-builder.Services.AddScoped<ICalendarTravelRequestRepository,CalendarTravelRequestRepository>();
+builder.Services.AddScoped<ICalendarTravelRequestRepository, CalendarTravelRequestRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITravelRequestStatsRepository, TravelRequestStatsRepository>();
@@ -65,25 +78,6 @@ builder.Services.AddScoped<ITravelRequestRepo, TravelRequestRepo>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 
-// For CORS error resolve
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("AllowReactApp",
-//        policy =>
-//        {
-//            policy.WithOrigins("http://localhost:5030", "http://localhost:5173") // Add React app ports
-//                  .AllowAnyHeader()
-//                  .AllowAnyMethod();
-//        });
-//});
-
-// Register the RmtDataSyncService as a hosted service
-//builder.Services.AddHostedService<RmtDataSyncService>();
-
-builder.Services.AddScoped<IDocumentService, DocumentRepository>();
-builder.Services.AddAutoMapper(typeof(Program)); // If using AutoMapper
-
-
 // Add CORS policy to allow all frontends
 builder.Services.AddCors(options =>
 {
@@ -97,20 +91,10 @@ builder.Services.AddCors(options =>
 
 // Configure Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
-//builder.Services.AddSwaggerGen();
 
 builder.Services.AddSwaggerGen(option =>
 {
     option.SwaggerDoc("v1", new OpenApiInfo { Title = "JWTWebApplication", Version = "v1" });
-    //option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    //{
-    //    In = ParameterLocation.Header,
-    //    Description = "Please enter a valid token",
-    //    Name = "Authorization",
-    //    Type = SecuritySchemeType.Http,
-    //    BearerFormat = "JWT",
-    //    Scheme = "Bearer"
-    //});
     option.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -126,6 +110,7 @@ builder.Services.AddSwaggerGen(option =>
         }
     });
 });
+
 //Jwt 
 builder.Services.AddAuthentication(options => {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -156,10 +141,9 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 }
 //app.UseHttpsRedirection();
 
-
-
 // Apply CORS policy
 app.UseCors("AllowAll");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
