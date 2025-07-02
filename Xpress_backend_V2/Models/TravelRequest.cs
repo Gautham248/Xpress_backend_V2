@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Xpress_backend_V2.Models
 {
@@ -29,12 +30,17 @@ namespace Xpress_backend_V2.Models
         public bool IsVegetarian { get; set; }
         public string? FoodComment { get; set; }
         public bool AttendedCCT { get; set; }
+        public bool IsBillable { get; set; }
         public int CurrentStatusId { get; set; } // FK → RequestStatuses
         public int? SelectedTicketOptionId { get; set; } // FK → TicketOptions
         public string? TravelAgencyName { get; set; }
         public decimal? TravelAgencyExpense { get; set; }
         public decimal? TotalExpense { get; set; }
         public List<string>? TicketDocumentPath { get; set; }
+        [Column(TypeName = "jsonb")]
+        public List<string>? AccommodationDocumentPath { get; set; }
+        [Column(TypeName = "jsonb")]
+        public List<string>? InsuranceDocumentPath { get; set; }
         public string? LDCertificatePath { get; set; }
         public string? TravelFeedback { get; set; }
         public DateTime CreatedAt { get; set; } // Always UTC
