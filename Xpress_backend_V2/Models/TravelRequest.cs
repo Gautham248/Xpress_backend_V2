@@ -37,7 +37,7 @@ namespace Xpress_backend_V2.Models
         public decimal? TotalExpense { get; set; }
         public List<string>? TicketDocumentPath { get; set; }
         [Column(TypeName = "jsonb")]
-        public List<string>? AccomodationDocumentPath { get; set; }
+        public List<string>? AccommodationDocumentPath { get; set; }
         [Column(TypeName = "jsonb")]
         public List<string>? InsuranceDocumentPath { get; set; }
         public string? LDCertificatePath { get; set; }
