@@ -30,6 +30,7 @@ namespace Xpress_backend_V2.Models
         public bool IsVegetarian { get; set; }
         public string? FoodComment { get; set; }
         public bool AttendedCCT { get; set; }
+        public bool IsBillable { get; set; }
         public int CurrentStatusId { get; set; } // FK → RequestStatuses
         public int? SelectedTicketOptionId { get; set; } // FK → TicketOptions
         public string? TravelAgencyName { get; set; }
