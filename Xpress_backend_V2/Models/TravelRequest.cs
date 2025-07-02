@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Xpress_backend_V2.Models
 {
@@ -35,6 +36,10 @@ namespace Xpress_backend_V2.Models
         public decimal? TravelAgencyExpense { get; set; }
         public decimal? TotalExpense { get; set; }
         public List<string>? TicketDocumentPath { get; set; }
+        [Column(TypeName = "jsonb")]
+        public List<string>? AccomodationDocumentPath { get; set; }
+        [Column(TypeName = "jsonb")]
+        public List<string>? InsuranceDocumentPath { get; set; }
         public string? LDCertificatePath { get; set; }
         public string? TravelFeedback { get; set; }
         public DateTime CreatedAt { get; set; } // Always UTC
